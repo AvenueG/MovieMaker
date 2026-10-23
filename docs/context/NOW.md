@@ -15,7 +15,6 @@
 
 ## 阻塞
 
-- Claude 对 GitHub 仓库 AvenueG/MovieMaker 没有写入权限，需要用户重新连接 GitHub 或安装 Claude GitHub App（2026-10-23 检查）。
 - 《一口变凡人》缺用户原概念。
 
 ## 待用户验收
