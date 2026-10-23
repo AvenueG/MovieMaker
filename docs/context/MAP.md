@@ -10,6 +10,7 @@
 | `.claude/skills/short-drama-preprod/` | `SKILL.md` 方法；`scripts/check.py` 质量门；`scripts/studio_sync.py` 网页互导 | skill 的唯一权威副本 |
 | `.claude/agents/` | `screenwriter.md` `reviewer.md` `storyboarder.md` | |
 | `studio/studio.html` | 网页短剧创作台源码 | 已发布：https://claude.ai/artifact/Q3VFc8tCdBaS6dRWpUYQgk |
+| `studio/input-desk.html` | 灵感输入台：一句话追问 → 去俗套 → 钉子 → 3 个标签 → 名场面切片，导出项目卡 | 已发布：https://claude.ai/artifact/Ur2115ETGpu3yoPpXvB7mK；切片质量门（15 字/句、钉子保留）和 check.py 切片模式一致 |
 | `studio/gate-checker.html` | 网页版质量门检查器 | 已发布：https://claude.ai/artifact/NPTzXxFaCFgMEB2z7NtxgN |
 | `docs/research/` | 开源方案调研、开源 skill 调研、前期工具调研、三套审片标准 | 只作参考 |
 | `samples/` | 早期样片包 | 见下 |
