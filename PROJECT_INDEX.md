@@ -20,6 +20,7 @@
 | 改质量门阈值 | [DECISIONS.md](docs/context/DECISIONS.md)「质量门」 | 三处同步，见 MAP |
 | 审片标准 | SKILL.md「审片打分」一节 | [review-rubrics.md](docs/research/review-rubrics.md)（广告片、电影节标准） |
 | 为什么这样做、能不能换做法 | [DECISIONS.md](docs/context/DECISIONS.md) | [docs/research/](docs/research/) |
+| 行业标准、平台收稿、爆款题材 | [行业调研-2026-10.md](docs/research/行业调研-2026-10.md) | |
 | 已知问题和风险 | [RISKS.md](docs/context/RISKS.md) | |
 | 追溯以前做过什么 | [history/README.md](history/README.md)（先搜索） | |
 | 参考旧样片 | [MAP.md](docs/context/MAP.md)「样片」 | `samples/` |
