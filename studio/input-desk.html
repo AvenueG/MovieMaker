@@ -42,6 +42,13 @@ h3 { margin: 0; font: 600 16px var(--display) }
 .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center }
 .picks { display: flex; gap: 8px; flex-wrap: wrap }
 .pick { font: 14px/1.4 var(--body); padding: 7px 13px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); color: var(--ink); cursor: pointer }
+.stage input[type=range] { width: 100%; accent-color: var(--seal) }
+.stage .ticks { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); font-size: 11px; color: var(--muted); text-align: center; line-height: 1.3 }
+.stage .ticks b { color: var(--seal) }
+.stage .now { font: 600 15px var(--display) } .stage .now span { font: 13px var(--body); color: var(--muted); margin-left: 6px }
+.arc { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; text-align: center; font-size: 11px; color: var(--muted) }
+.arc div { border-top: 3px solid var(--line); padding-top: 6px; display: grid; gap: 2px }
+.arc .has { border-color: var(--seal); color: var(--ink) } .arc b { font: 700 16px var(--display); color: var(--seal) }
 .pick.add { border-style: dashed; color: var(--muted) }
 .pick.own { border-color: var(--gold) }
 .pick.own::before { content: "✎ "; color: var(--gold) }
@@ -159,6 +166,15 @@ const VIBES = { her: ["嘴硬心软", "傻白甜", "清醒独立", "财迷", "�
 const WORLDS = ["校园", "豪门", "古风宫廷", "仙侠", "都市职场", "妖精学院"];
 const RULES = ["她做的菜能让妖精当一晚凡人", "他只要一心动就会打雷", "她能听见他的心声", "两人离开三米就会互换身体", "她每说一次谎，他就会失忆一天", "他看谁一眼，谁就会爱上他，除了她"];
 const PLACES = ["食堂", "教室", "天台", "雨夜街头", "宴会厅", "电梯", "厨房", "钟楼顶"];
+const STAGES = [
+  { v: "初遇不熟", d: "刚认识，戒备又好奇，靠近一点都显得冒犯" },
+  { v: "看不顺眼", d: "互相嫌弃，嘴上不饶人，其实很在意" },
+  { v: "恋人未满", d: "已经心动，但谁都不说破，试探和嘴硬" },
+  { v: "确认心意", d: "说开了，正甜，可以大方亲近" },
+  { v: "关系恶化", d: "误会或秘密爆了，冷战，亲近反而更痛" },
+  { v: "和好如初", d: "经历过裂痕，比以前更懂对方，最稳的甜" },
+];
+const stageOf = c => STAGES.findIndex(x => x.v === c.stage);
 const FLAVORS = ["更甜", "更虐", "更好笑", "更霸气", "台词更短", "换个结尾"];
 
 const EXAMPLE = {
@@ -167,10 +183,10 @@ const EXAMPLE = {
   skips: ["忠犬奶狗", "破镜重圆", "壁咚对视"],
   cast: { her: { name: "小芜", look: "短发元气", vibe: "嘴硬心软" }, him: { name: "莱昂", look: "金发吸血鬼", vibe: "病娇" } },
   world: "妖精学院", rule: "她做的菜能让妖精当一晚凡人",
-  scene: { type: "投喂心动", place: "食堂" },
+  scene: { type: "投喂心动", place: "食堂", stage: 2 },
   draft: null, mine: {},
   clips: [{
-    title: "三百年了，番茄是酸的", type: "投喂心动", place: "食堂", flavors: ["更甜"], mine: 1, at: "示例",
+    title: "三百年了，番茄是酸的", type: "投喂心动", place: "食堂", stage: "恋人未满", flavors: ["更甜"], mine: 1, at: "示例",
     beats: [
       { k: "act", t: "一碗红酸汤被推到金发少年面前，他低头喝了一口", tag: "钩子" },
       { k: "act", t: "他的獠牙一点点缩回去，眼泪砸进碗里" },
@@ -181,7 +197,7 @@ const EXAMPLE = {
     ],
   }],
 };
-const BLANK = () => ({ example: false, step: 0, deckIdx: 0, likes: [], skips: [], cast: { her: { name: "", look: "", vibe: "" }, him: { name: "", look: "", vibe: "" } }, world: "", rule: "", scene: { type: "", place: "", wish: "" }, draft: null, clips: [] });
+const BLANK = () => ({ example: false, step: 0, deckIdx: 0, likes: [], skips: [], cast: { her: { name: "", look: "", vibe: "" }, him: { name: "", look: "", vibe: "" } }, world: "", rule: "", scene: { type: "", place: "", wish: "", stage: 2 }, draft: null, clips: [] });
 
 let S, sample = null, downloads = null, busy = false, justStamped = false, justEdited = null;
 const $ = id => document.getElementById(id);
@@ -228,23 +244,25 @@ function brief() {
 世界：${S.world}；特殊规则：${S.rule}
 角色：\n${castText()}`;
 }
+const stIdx = () => { const n = S.scene.stage; return Number.isInteger(n) && n >= 0 && n < STAGES.length ? n : 2; };
 const wish = () => (S.scene.wish || "").trim();
 async function draftScene() {
   if (!sample) throw { message: "连不上 Claude。" };
   const r = await sample.json(`你是竖屏短剧编剧，帮作者把他喜欢的元素拼成一条名场面切片，要让作者一看就觉得「对，就是这个味儿」。
 ${brief()}
 这条名场面：类型「${S.scene.type}」，地点「${S.scene.place}」。要用上特殊规则，并体现两位主角的性格和口头禅或小怪癖。
+两人此刻的感情阶段：「${STAGES[stIdx()].v}」——${STAGES[stIdx()].d}。台词的直白程度、身体距离和情绪都必须符合这个阶段，不能越级。
 ${wish() ? `作者亲手写了这一句（台词或画面），必须作为单独一拍原样放进去，一字不改，并让整条围绕它：${wish()}` : ""}
 ${FORMAT}`, { modelTier: "complex", cache: false });
   const beats = clean(r.beats); const w = wish(); const norm = t => t.replace(/[，。！？…、,.!?\s「」“”]/g, "");
   if (w) { const hit = beats.find(b => norm(b.t) === norm(w) || norm(b.t).includes(norm(w))); if (hit) { hit.t = hit.k === "line" && hit.t !== w && norm(hit.t) === norm(w) ? w : hit.t; hit.mine = true; } else beats.splice(Math.min(2, beats.length), 0, { k: "act", t: w, mine: true }); }
   const mode = S.draft ? { editing: S.draft.editing, from: S.draft.from } : {};
-  S.draft = { title: r.title || `${S.scene.type}`, type: S.scene.type, place: S.scene.place, flavors: [], beats, ...mode };
+  S.draft = { title: r.title || `${S.scene.type}`, type: S.scene.type, place: S.scene.place, flavors: [], beats, stage: STAGES[stIdx()].v, ...mode };
 }
 async function flavor(f) {
   if (!sample) throw { message: "连不上 Claude。" };
   const keep = S.draft.beats.map((b, i) => b.mine ? `第 ${i + 1} 拍是作者自己写的，一字不改：${b.t}` : "").filter(Boolean).join("\n");
-  const r = await sample.json(`你是竖屏短剧编剧。作者想把这条名场面调成「${f}」。只改需要改的地方，保留作者喜欢的元素。
+  const r = await sample.json(`你是竖屏短剧编剧。作者想把这条名场面调成「${f}」。只改需要改的地方，保留作者喜欢的元素。两人的感情阶段是「${S.draft.stage || STAGES[stIdx()].v}」，不能越级。
 ${brief()}
 现在的版本：${JSON.stringify(S.draft.beats)}
 ${keep}
@@ -327,11 +345,15 @@ const VIEWS = {
     return `<h2>出一条名场面</h2><p class="why">选一种名场面和地点，AI 按你的口味拼一条 20 秒左右的切片。然后调味，或者点任意一拍自己改。</p>
     <div class="group"><span>名场面${liked.length ? "（你喜欢的排在前面）" : ""}</span>${pickBtns(types, S.scene.type, "data-type")}</div>
     <div class="group"><span>地点</span>${pickBtns(PLACES, S.scene.place, "data-place")}</div>
+    <div class="group stage"><span>他们现在的感情阶段（拖一下，同一个名场面在不同阶段完全是两种味道）</span>
+      <div class="now">${esc(STAGES[stIdx()].v)}<span>${esc(STAGES[stIdx()].d)}</span></div>
+      <input type="range" id="stage" min="0" max="${STAGES.length - 1}" step="1" value="${stIdx()}" aria-label="感情阶段" aria-valuetext="${esc(STAGES[stIdx()].v)}">
+      <div class="ticks">${STAGES.map((x, i) => i === stIdx() ? `<b>${x.v}</b>` : `<span>${x.v}</span>`).join("")}</div></div>
     <div class="group"><span>你脑子里已经有的一句台词或一个画面（可选，AI 会一字不改地用上）</span><input type="text" class="field" id="wish" value="${esc(S.scene.wish || "")}" placeholder="比如：三百年了，番茄是酸的" maxlength="40"></div>
     <div class="row"><button class="btn primary" type="button" id="draftBtn" ${sample && S.scene.type && S.scene.place ? "" : "disabled"}>${d ? "换一版" : "拼一条名场面"}</button>${!sample ? `<span class="meter">要连上 Claude 才能出名场面</span>` : ""}</div>
     ${d ? `<div class="grid" style="display:grid;gap:12px">${d.editing != null ? `<div class="banner" style="margin:0">正在修改作品集里的 C${String(d.editing + 1).padStart(2, "0")}。改完点「保存修改」，原来那条会被替换。</div>` : d.from != null ? `<div class="banner" style="margin:0">以 C${String(d.from + 1).padStart(2, "0")} 为底做新的一条，原来那条不会变。</div>` : ""}
       <h3 id="titleEd" role="button" tabindex="0" title="点一下改标题" style="cursor:text">${esc(d.title)} <span class="meter">✎</span></h3>
-      <div class="script"><div class="slugline">内景 · ${esc(d.place)} · ${esc(S.world)}　｜　${esc(nameOf("her"))}、${esc(nameOf("him"))}</div>
+      <div class="script"><div class="slugline">${d.stage ? esc(d.stage) + " · " : ""}内景 · ${esc(d.place)} · ${esc(S.world)}　｜　${esc(nameOf("her"))}、${esc(nameOf("him"))}</div>
       ${d.beats.map((b, i) => b.k === "line" ? `<div class="beat line ${b.mine ? "mine" : ""}" data-edit="${i}" role="button" tabindex="0" title="点一下自己改"><span class="no">${i + 1}</span><span><span class="who">${esc(b.who)}</span>（${esc(b.how || "")}）<span class="t">${esc(b.t)}</span>${b.tag ? `<span class="tag">#${esc(b.tag)}</span>` : ""}</span></div>` : `<div class="beat act ${b.mine ? "mine" : ""}" data-edit="${i}" role="button" tabindex="0" title="点一下自己改"><span class="no">${i + 1}</span><span><span class="t">${esc(b.t)}</span>${b.tag ? `<span class="tag">#${esc(b.tag)}</span>` : ""}</span></div>`).join("")}</div>
       <div class="gates">${gates(d.beats).map(g => `<span class="gate ${g.ok ? "" : "bad"}">${g.ok ? "✓" : "✗"} ${esc(g.t)}</span>`).join("")}</div>
       <div class="group"><span>调味${d.flavors.length ? `（已调：${esc(d.flavors.join("、"))}）` : ""}</span><div class="flavors">${FLAVORS.map(f => `<button type="button" class="pick" data-flavor="${f}" ${sample ? "" : "disabled"}>${f}</button>`).join("")}</div>
@@ -343,8 +365,9 @@ const VIEWS = {
     const last = S.clips[S.clips.length - 1]; const ed = justEdited != null && S.clips[justEdited];
     return `<h2>你的作品集</h2>
     ${ed ? `<div class="cheer"><span class="stamp new">已<br>改好</span><p>${esc(`C${String(justEdited + 1).padStart(2, "0")}「${ed.title}」改好了。` + (ed.mine ? `现在有 ${ed.mine} 处是你亲手写的。` : ""))}</p></div>` : last ? `<div class="cheer"><span class="stamp ${justStamped ? "new" : ""}">已<br>收录</span><p>${cheer(last)}</p></div>` : ""}
+    ${S.clips.length ? `<div class="group"><span>你的感情线（${new Set(S.clips.map(c => c.stage).filter(Boolean)).size} / ${STAGES.length} 个阶段有名场面${new Set(S.clips.map(c => c.stage).filter(Boolean)).size >= 4 ? "，已经能连成一条完整的感情线了" : "，补齐几个阶段就能连成一部剧"}）</span><div class="arc">${STAGES.map(x => { const n = S.clips.filter(c => c.stage === x.v).length; return `<div class="${n ? "has" : ""}">${n ? `<b>${n}</b>` : "<b>·</b>"}${x.v}</div>`; }).join("")}</div></div>` : ""}
     <div class="stats"><div><b>${S.clips.length}</b><span>条名场面</span></div><div><b>${used.size}</b><span>种名场面类型</span></div><div><b>${mine}</b><span>处你亲手写的</span></div></div>
-    ${S.clips.length ? `<div class="wall">${S.clips.map((c, i) => { const q = c.beats.find(b => b.mine) || c.beats.find(b => b.k === "line"); return `<div class="tile"><span class="stamp">C${String(i + 1).padStart(2, "0")}</span><h3>${esc(c.title)}</h3>${q ? `<span class="quote">「${esc(q.t)}」</span>` : ""}<span class="meta">${esc(c.type)} · ${esc(c.place)}${c.flavors?.length ? " · " + esc(c.flavors.join("、")) : ""}</span><div class="row"><button class="btn" type="button" data-reopen="${i}">修改</button><button class="btn" type="button" data-fork="${i}">以它为底再做一条</button><button class="btn ghost" type="button" data-copy="${i}">复制剧本</button><button class="btn ghost" type="button" data-del="${i}">删除</button></div></div>`; }).join("")}</div>` : `<p class="why">还没有作品。去「出名场面」拼第一条吧。</p>`}
+    ${S.clips.length ? `<div class="wall">${S.clips.map((c, i) => { const q = c.beats.find(b => b.mine) || c.beats.find(b => b.k === "line"); return `<div class="tile"><span class="stamp">C${String(i + 1).padStart(2, "0")}</span><h3>${esc(c.title)}</h3>${q ? `<span class="quote">「${esc(q.t)}」</span>` : ""}<span class="meta">${c.stage ? esc(c.stage) + " · " : ""}${esc(c.type)} · ${esc(c.place)}${c.flavors?.length ? " · " + esc(c.flavors.join("、")) : ""}</span><div class="row"><button class="btn" type="button" data-reopen="${i}">修改</button><button class="btn" type="button" data-fork="${i}">以它为底再做一条</button><button class="btn ghost" type="button" data-copy="${i}">复制剧本</button><button class="btn ghost" type="button" data-del="${i}">删除</button></div></div>`; }).join("")}</div>` : `<p class="why">还没有作品。去「出名场面」拼第一条吧。</p>`}
     <div class="row"><button class="btn primary" type="button" data-go="3">再来一条</button><button class="btn" type="button" id="exportBtn" ${S.clips.length ? "" : "disabled"}>导出项目卡</button></div>`;
   },
 };
@@ -380,6 +403,7 @@ const BIND = {
     document.querySelectorAll("[data-place]").forEach(b => b.addEventListener("click", () => { S.scene.place = b.dataset.place; touch(); render(); }));
     $("dropBtn")?.addEventListener("click", () => { S.draft = null; S.step = 4; touch(); render(); });
     $("titleEd")?.addEventListener("click", editTitle); $("titleEd")?.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.id === "titleEd") editTitle(); });
+    $("stage").addEventListener("change", e => { S.scene.stage = +e.target.value; if (S.draft) S.draft.stage = STAGES[+e.target.value].v; touch(); render(); });
     $("wish").addEventListener("input", e => { S.scene.wish = e.target.value; touch(); });
     $("draftBtn")?.addEventListener("click", e => run(e.target, draftScene));
     $("flavorGo")?.addEventListener("click", e => { const f = $("flavorOwn").value.trim(); if (f) run(e.target, () => flavor(f)); else $("flavorOwn").focus(); });
@@ -394,7 +418,7 @@ const BIND = {
   },
   wall() {
     $("exportBtn")?.addEventListener("click", exportCard);
-    const open = (i, mode) => { const c = structuredClone(S.clips[i]); delete c.mine; delete c.at; S.draft = { ...c, flavors: c.flavors || [], [mode]: i }; S.scene.type = c.type; S.scene.place = c.place; S.step = 3; touch(); render(); window.scrollTo({ top: 0 }); };
+    const open = (i, mode) => { const c = structuredClone(S.clips[i]); delete c.mine; delete c.at; S.draft = { ...c, flavors: c.flavors || [], [mode]: i }; S.scene.type = c.type; S.scene.place = c.place; if (stageOf(c) >= 0) S.scene.stage = stageOf(c); S.step = 3; touch(); render(); window.scrollTo({ top: 0 }); };
     document.querySelectorAll("[data-reopen]").forEach(b => b.addEventListener("click", () => open(+b.dataset.reopen, "editing")));
     document.querySelectorAll("[data-fork]").forEach(b => b.addEventListener("click", () => open(+b.dataset.fork, "from")));
     document.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => { if (b.dataset.armed) { S.clips.splice(+b.dataset.del, 1); touch(); render(); } else { b.dataset.armed = "1"; b.textContent = "再点一次删除"; } }));
@@ -419,7 +443,7 @@ function editLine(el) {
 }
 
 function projectCard() {
-  return `# 项目卡：${S.world || "未定"}｜${S.rule || ""}\n\n## 口味\n喜欢：${S.likes.join("、")}\n不喜欢：${S.skips.join("、")}\n\n## 角色\n${castText()}\n\n## 世界和规则\n${S.world}；${S.rule}\n\n## 名场面切片\n${S.clips.map((c, i) => toScript(c, i) + (c.mine ? `\n（其中 ${c.mine} 句台词是作者亲手写的，后续保留原文）` : "")).join("\n\n")}\n`;
+  return `# 项目卡：${S.world || "未定"}｜${S.rule || ""}\n\n## 口味\n喜欢：${S.likes.join("、")}\n不喜欢：${S.skips.join("、")}\n\n## 角色\n${castText()}\n\n## 世界和规则\n${S.world}；${S.rule}\n\n## 名场面切片（按感情阶段排）\n${S.clips.map((c, i) => [c, i]).sort((a, b) => (stageOf(a[0]) - stageOf(b[0])) || (a[1] - b[1])).map(([c, i]) => `（感情阶段：${c.stage || "未标"}）\n` + toScript(c, i) + (c.mine ? `\n（其中 ${c.mine} 句台词是作者亲手写的，后续保留原文）` : "")).join("\n\n")}\n`;
 }
 async function exportCard() {
   const text = projectCard();
