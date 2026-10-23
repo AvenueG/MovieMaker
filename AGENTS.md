@@ -53,7 +53,7 @@ NOW.md 里的各剧进度只写一行摘要并链接到各自的 state.md，不�
 - 方法和格式：[.claude/skills/short-drama-preprod/SKILL.md](.claude/skills/short-drama-preprod/SKILL.md)，开工前按需读对应阶段。
 - 顺序：一句话 → 标签 → 概念 → 整季 → 逐集大纲 → 剧本 → 审片 →（分镜）。
 - **用户偏好**：每个阶段做完停下等用户确认再进下一步；概念必须由用户选定，不替用户挑；重写或续写默认只做到剧本（大纲 → 剧本 → 审片），用户明确要分镜时才做分镜。
-- 分工 agent（`.claude/agents/`）：`screenwriter` 写大纲和剧本并自跑质量门；`reviewer` 独立审片，只读剧本和整季；`storyboarder` 拆分镜。一集内按 大纲 → 剧本 → reviewer 的顺序；审片低于该剧 state.md 里的及格线（默认 75）就按改法改一次再审。
+- 分工 agent（`.claude/agents/`）：`screenwriter` 写大纲和剧本并自跑质量门；`reviewer` 单人审片（逐步模式用）；`reviewer-platform`、`reviewer-ads`、`reviewer-audience` 三个独立审片人和 `continuity` 连续性检查（工作室模式用）；`storyboarder` 拆分镜。工作室模式的流程和通过条件见 SKILL.md「工作室模式」。一集内按 大纲 → 剧本 → reviewer 的顺序；审片低于该剧 state.md 里的及格线（默认 75）就按改法改一次再审。
 - 质量门：剧本和分镜写完必须跑 `check.py`，有 ✗ 逐条修到全过（命令见 RUNBOOK）。
 - 网页创作台（`studio/studio.html`）和 `check.py`、`studio/gate-checker.html` 的阈值必须一致，改一处就同步另外两处。
 - 每次 agent 写完一批：更新该剧 state.md、NOW.md 的一行摘要，并导出最新的 `<剧名>-项目.json` 给网页导入。
