@@ -55,6 +55,11 @@ textarea:focus, input:focus, button:focus-visible, select:focus { outline: 2px s
 .q .hint { font-size: 13px; color: var(--muted) }
 .sparks { display: flex; gap: 6px; flex-wrap: wrap }
 .spark { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--bg); border: 1px dashed var(--line); color: var(--muted) }
+.pick { font: 13px/1.4 var(--body); padding: 5px 11px; border-radius: 999px; background: var(--paper); border: 1px solid var(--line); color: var(--ink); cursor: pointer }
+.pick[aria-pressed="true"] { background: var(--seal-soft); border-color: var(--seal); color: var(--seal) }
+.pickrow { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 8px; align-items: start }
+.pickrow > span { font-size: 13px; color: var(--muted); padding-top: 5px }
+@media (max-width: 520px) { .pickrow { grid-template-columns: minmax(0, 1fr) } .pickrow > span { padding-top: 0 } }
 .mark { background: var(--seal-soft); color: var(--seal); border-radius: 4px; padding: 0 3px }
 .nail { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: 8px; align-items: start }
 .nail select { font: 14px var(--body); padding: 9px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink) }
@@ -120,6 +125,23 @@ const QUESTIONS = [
   { k: "block", q: "谁或什么挡着她？", h: "一个具体的人或规则。" },
   { k: "image", q: "观众第一眼看到什么画面？", h: "竖屏手机上的前 3 秒。" },
 ];
+const PICKS = {
+  who: ["贫困生", "食堂帮工", "替嫁新娘", "落魄千金", "乡下丫头", "社恐小透明", "实习生", "外卖骑手"],
+  twist: ["看着软萌，其实是大佬", "全校最弱，却握着最强者的命门", "人人嫌弃，却是唯一的解药", "不会法术，只会做饭", "表面乖巧，其实是卧底", "看似倒霉，其实是锦鲤体质", "被退婚那天觉醒了能力", "嘴上嫌弃，手上宠溺"],
+  want: ["保住奖学金", "赚钱给家人治病", "开一家写着自己名字的店", "查清当年的真相", "摆脱被安排的婚事", "被亲生家人认回", "在大城市站稳脚跟", "拿到冠军"],
+  block: ["看不起她的主管", "想利用她的大人物", "一条不能违反的规则", "只剩几次的倒计时", "抢她功劳的姐妹", "她自己藏着的秘密", "家人的反对", "对她一见钟情的危险男人"],
+  image: ["一碗菜推到他面前", "撕成两半的通知单", "当众被泼了一身水", "高冷的他突然单膝跪下", "全场同时转头看她", "她摘下眼镜的一瞬", "停在半空的一个吻", "雨里替她撑起的伞"],
+};
+const TAG_ROWS = [
+  { t: "频道", o: ["女频", "男频"] },
+  { t: "世界", o: ["校园", "豪门", "古风", "仙侠", "年代", "都市"] },
+  { t: "看点", o: ["甜宠", "团宠", "逆袭", "虐渣", "先婚后爱", "萌宝"] },
+];
+const pickRow = (k, list, multi) => `<div class="sparks" role="group">${list.map(x => { const v = S.answers[k] || ""; const on = multi ? v.includes(x) : v === x; return `<button type="button" class="pick" data-pick="${k}" data-v="${esc(x)}" data-multi="${multi ? 1 : 0}" aria-pressed="${on}">${esc(x)}</button>`; }).join("")}</div>`;
+function compose() {
+  const a = S.answers; if (!a.who && !a.twist) return;
+  S.line = `${a.who || "一个普通女孩"}${a.twist ? "，" + a.twist : ""}${a.want ? "；为了" + a.want : ""}${a.block ? "，她必须对付" + a.block : ""}。`;
+}
 const NAIL_TYPES = ["画面", "台词", "规则", "人设怪癖"];
 const REFS = "红果 2026-10 上榜剧（只能从这里选对标）：《我在贵族学院伪装世家继承者》女频 校园 大女主 系统；《咱家剑宗团宠小师妹》女频 萌宝 甜宠 仙侠；《糯糯下山，师兄们都慌了》女频 团宠 仙侠；《重生！丑小鸭逆袭成了万人迷》女频 校园 重生；《满院亲戚全是上古大妖》女频 年代 奇幻脑洞；《乡下来的掌上明珠》女频 异能 萌宝 豪门；《桃源十年归，初恋变权臣》女频 穿越 言情；《总裁是我前女友》女频 破镜重圆 职场；《亿万斯年》都市爱情 双向奔赴 年龄差；《二嫁有喜》古风 大女主；《一块糟头肉，养出个省状元》女频 校园 小人物 亲情；《结账时我摊牌了》女频 大女主 逆袭；《招惹督军，他高调求娶我为妻》民国 言情；《纨绔下乡之顽郎亦不负流年》年代 闪婚 喜剧；《她靠修仙在现代风生水起》修仙 都市；《大唐憨婿之我姐姐是太子妃》古代 男频；《我都元婴期了，你跟我说开学》玄幻 都市 男频；《凡人百世书》玄幻 重生 男频；《绿意萌熹：蛙系萌娃闹翻忧郁老爸》萌宝 豪门；《夕阳红顶流，大爷大妈助我乐坛封神》系统 娱乐圈。";
 
@@ -275,14 +297,16 @@ function render() {
 }
 const aiBox = (title, inner) => `<div class="ai"><span class="who">${title}</span>${inner}</div>`;
 const VIEWS = {
-  line: () => `<h2>用一句话说出你的故事</h2><p class="why">不用写得漂亮，写你脑子里最想拍的那个点。AI 不会改你的句子，只会追问。</p>
+  line: () => `<h2>用一句话说出你的故事</h2><p class="why">不想打字就先点选，会自动拼成一句话；再把它改成你自己的说法。AI 不会改你的句子，只会追问。</p>
+    <div class="clips">${[["who", "主角是"], ["twist", "反差点"], ["want", "她想要"], ["block", "挡着她"]].map(([k, t]) => `<div class="pickrow"><span>${t}</span>${pickRow(k, PICKS[k], false)}</div>`).join("")}</div>
     <div><label for="line">你的一句话</label><textarea id="line" rows="3" placeholder="例：一个只会做饭的穷学生，她的菜能让吃下的妖精当一晚凡人。">${esc(S.line)}</textarea><div class="count" id="lineCount">${S.line.length} 字</div></div>
     ${S.diag ? aiBox("AI 体检", `<p>${esc(S.diag)}</p>`) : ""}
     <div class="row"><button class="btn primary" id="diagBtn" type="button" ${sample ? "" : "disabled"}>帮我体检，然后追问</button></div>`,
-  ask: () => `<h2>回答 5 个追问</h2><p class="why">想到什么写什么，一两句就够。卡住了点「给我点启发」，但别照抄，改成你自己的。</p>
+  ask: () => `<h2>回答 5 个追问</h2><p class="why">点选项会填进答案，可以点好几个；再在框里补一句只属于你的细节，这才是记忆点。</p>
     ${S.diag ? aiBox("AI 体检", `<p>${esc(S.diag)}</p>`) : ""}
     ${QUESTIONS.map(q => `<div class="q"><label class="ask" for="a-${q.k}">${q.q}</label><span class="hint">${q.h}</span><textarea class="small" id="a-${q.k}" rows="2">${esc(S.answers[q.k] || "")}</textarea>
-      <div class="row">${(S.sparks?.[q.k] || []).length ? `<div class="sparks">${S.sparks[q.k].map(x => `<span class="spark">${esc(x)}</span>`).join("")}</div>` : ""}<button class="btn ghost" type="button" data-spark="${q.k}" ${sample ? "" : "disabled"}>给我点启发</button></div></div>`).join("")}`,
+      ${pickRow(q.k, [...new Set([...(S.sparks?.[q.k] || []), ...PICKS[q.k]])], true)}
+      <div class="row"><button class="btn ghost" type="button" data-spark="${q.k}" ${sample ? "" : "disabled"}>按我的故事给 3 个</button></div></div>`).join("")}`,
   cliche: () => {
     const c = S.cliche; let marked = esc(S.line);
     (c?.generic || []).forEach(g => { if (g.p) marked = marked.split(esc(g.p)).join(`<span class="mark">${esc(g.p)}</span>`); });
@@ -293,10 +317,13 @@ const VIEWS = {
   },
   nails: () => `<h2>钉下 3–5 个记忆点</h2><p class="why">钉子就是观众看完会记住、会截图的东西：一句台词、一个画面、一条规则或一个怪癖。后面所有环节都会原样保留它们。</p>
     <div class="clips">${S.nails.map((n, i) => { const c = S.nailCheck[i]; return `<div class="nail"><select id="nt-${i}" aria-label="钉子类型">${NAIL_TYPES.map(t => `<option ${t === n.type ? "selected" : ""}>${t}</option>`).join("")}</select><input type="text" class="small" id="nx-${i}" value="${esc(n.text)}" placeholder="${["例：三百年了，原来番茄是酸的。", "例：满厅学生同时举起饭卡。", "例：老底只剩七勺。", "", ""][i] || ""}"><span>${c ? `<span class="seal" title="独特度">${c.s}</span>` : `<button class="btn ghost" type="button" data-del="${i}" ${S.nails.length <= 1 ? "disabled" : ""}>删</button>`}</span>${c ? `<div class="verdict">${esc(c.v)} <b>${esc(c.q)}</b></div>` : ""}</div>`; }).join("")}</div>
+    <div class="row"><span class="hint">一键钉住：</span>${S.answers.image ? `<button class="pick" type="button" data-quick="image">第一眼画面</button>` : ""}${S.answers.twist ? `<button class="pick" type="button" data-quick="twist">反差点</button>` : ""}</div>
     <div class="row"><button class="btn ghost" id="addNail" type="button" ${S.nails.length >= 5 ? "disabled" : ""}>加一个钉子</button><button class="btn primary" id="nailBtn" type="button" ${sample ? "" : "disabled"}>给钉子打分</button></div>
     <p class="hint">印章里的数字是独特度：5 只属于这部剧，3 是常见写法。3 分以下的，按问题再磨一磨。</p>`,
   tags: () => `<h2>选一组标签</h2><p class="why">标签最多 3 个。每组都附一部现在榜上的对标剧，方便你判断方向。也可以自己写。</p>
-    <div class="row"><button class="btn ${S.tagSets.length ? "ghost" : "primary"}" id="tagBtn" type="button" ${sample ? "" : "disabled"}>${S.tagSets.length ? "换 3 组" : "给我 3 组"}</button></div>
+    <div class="clips">${TAG_ROWS.map((r, i) => `<div class="pickrow"><span>${r.t}</span><div class="sparks">${r.o.map(x => `<button type="button" class="pick" data-tagrow="${i}" data-v="${x}" aria-pressed="${(S.tagPick || [])[i] === x}">${x}</button>`).join("")}</div></div>`).join("")}</div>
+    <p class="hint">每行点一个，正好 3 个。想要对标剧参考，再让 AI 给 3 组。</p>
+    <div class="row"><button class="btn ghost" id="tagBtn" type="button" ${sample ? "" : "disabled"}>${S.tagSets.length ? "换 3 组对标" : "按我的故事给 3 组对标"}</button></div>
     ${S.tagSets.length ? `<div class="sets">${S.tagSets.map((s, i) => `<button type="button" class="set" data-set="${i}" aria-pressed="${s.tags.join() === S.tags.join()}"><span class="chips">${s.tags.map(t => `<span class="chip">${esc(t)}</span>`).join("")}</span><span class="ref">对标《${esc(s.ref)}》</span><span class="hint">${esc(s.why)}</span></button>`).join("")}</div>` : ""}
     <div><label for="tagsOwn">我的标签（用顿号或空格隔开，最多 3 个）</label><input type="text" class="small" id="tagsOwn" value="${esc(S.tags.join("、"))}"></div>`,
   clips: () => `<h2>名场面切片</h2><p class="why">AI 短剧大多以切片被看到：一条 15–45 秒、能单独看懂的心动或爽点名场面。每条至少用一个钉子。先选方向，再出草稿，草稿你可以随便改。</p>
@@ -310,17 +337,20 @@ const VIEWS = {
     ${S.clips.length ? "" : `<p class="hint">还没有切片。</p>`}`,
 };
 const BIND = {
-  line() { const t = $("line"); t.addEventListener("input", () => { S.line = t.value; $("lineCount").textContent = t.value.length + " 字"; S.example = false; save(); }); $("diagBtn").addEventListener("click", e => { if (S.line.trim().length < 8) return setStatus("先写一句话，至少 8 个字。", true); run(e.target, AI.diagnose); }); },
-  ask() { QUESTIONS.forEach(q => $("a-" + q.k).addEventListener("input", e => { S.answers[q.k] = e.target.value; S.example = false; save(); })); document.querySelectorAll("[data-spark]").forEach(b => b.addEventListener("click", () => run(b, () => AI.spark(b.dataset.spark)))); },
+  line() { document.querySelectorAll("[data-pick]").forEach(b => b.addEventListener("click", () => togglePick(b))); const t = $("line"); t.addEventListener("input", () => { S.line = t.value; $("lineCount").textContent = t.value.length + " 字"; S.example = false; save(); }); $("diagBtn").addEventListener("click", e => { if (S.line.trim().length < 8) return setStatus("先写一句话，至少 8 个字。", true); run(e.target, AI.diagnose); }); },
+  ask() {
+    document.querySelectorAll("[data-pick]").forEach(b => b.addEventListener("click", () => togglePick(b))); QUESTIONS.forEach(q => $("a-" + q.k).addEventListener("input", e => { S.answers[q.k] = e.target.value; S.example = false; save(); })); document.querySelectorAll("[data-spark]").forEach(b => b.addEventListener("click", () => run(b, () => AI.spark(b.dataset.spark)))); },
   cliche() { $("line2").addEventListener("input", e => { S.line2 = e.target.value; S.example = false; save(); }); $("clicheBtn").addEventListener("click", e => run(e.target, AI.cliche)); },
   nails() {
     S.nails.forEach((n, i) => { $("nx-" + i).addEventListener("input", e => { n.text = e.target.value; S.nailCheck = []; S.example = false; save(); }); $("nt-" + i).addEventListener("change", e => { n.type = e.target.value; save(); }); });
     document.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => { S.nails.splice(+b.dataset.del, 1); S.nailCheck = []; save(); render(); }));
+    document.querySelectorAll("[data-quick]").forEach(b => b.addEventListener("click", () => { const k = b.dataset.quick; const text = S.answers[k]; if (!text || S.nails.some(n => n.text === text)) return; const empty = S.nails.find(n => !n.text.trim()); const nail = { type: k === "image" ? "画面" : "人设怪癖", text }; if (empty) Object.assign(empty, nail); else if (S.nails.length < 5) S.nails.push(nail); S.nailCheck = []; S.example = false; save(); render(); }));
     $("addNail").addEventListener("click", () => { S.nails.push({ type: "台词", text: "" }); S.nailCheck = []; save(); render(); });
     $("nailBtn").addEventListener("click", e => { if (S.nails.filter(x => x.text.trim()).length < 1) return setStatus("先写至少一个钉子。", true); S.nails = S.nails.filter(x => x.text.trim()); run(e.target, AI.nails); });
   },
   tags() {
     $("tagBtn").addEventListener("click", e => run(e.target, AI.tags));
+    document.querySelectorAll("[data-tagrow]").forEach(b => b.addEventListener("click", () => { const i = +b.dataset.tagrow; const t = [...(S.tagPick || ["", "", ""])]; t[i] = t[i] === b.dataset.v ? "" : b.dataset.v; S.tagPick = t; S.tags = t.filter(Boolean); S.example = false; save(); render(); }));
     document.querySelectorAll("[data-set]").forEach(b => b.addEventListener("click", () => { S.tags = [...S.tagSets[+b.dataset.set].tags]; S.example = false; save(); render(); }));
     $("tagsOwn").addEventListener("change", e => { S.tags = e.target.value.split(/[、,，\s]+/).map(s => s.trim()).filter(Boolean).slice(0, 3); e.target.value = S.tags.join("、"); S.example = false; save(); render(); });
   },
@@ -334,6 +364,14 @@ const BIND = {
   },
 };
 
+function togglePick(b) {
+  const k = b.dataset.pick, v = b.dataset.v, multi = b.dataset.multi === "1";
+  let cur = S.answers[k] || "";
+  if (!multi) cur = cur === v ? "" : v;
+  else if (cur.includes(v)) cur = cur.split(v).join("").replace(/^[，、\s]+|[，、\s]+$/g, "").replace(/[，、]{2,}/g, "，");
+  else cur = cur ? cur + "，" + v : v;
+  S.answers[k] = cur; if (S.step === 0) compose(); S.example = false; save(); render();
+}
 function card() {
   const nails = S.nails.filter(x => x.text.trim());
   const name = (S.line2 || S.line).slice(0, 12);
