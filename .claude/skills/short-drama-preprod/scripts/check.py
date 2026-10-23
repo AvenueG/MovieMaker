@@ -3,16 +3,17 @@
 import csv, re, sys
 
 CPS, ACT_SEC, LINE_MAX, GAP_MAX, TOL = 4.5, 2.5, 35, 20, 0.15
+CLIP_LINE_MAX = 15  # 切片模式（# C01 …）单句上限，按行业标准
 CUT_MIN, CUT_MAX, PEOPLE_MAX = 2, 8, 3
 SIZES = ["大远景", "远景", "大全景", "全景", "中全景", "中景", "中近景", "近景", "特写", "大特写"]
 
 def parse_script(path):
-    ep = {"target": None, "cast": set(), "beats": []}
+    ep = {"target": None, "cast": set(), "beats": [], "clip": False}
     scene = None
     for raw in open(path, encoding="utf-8"):
         s = raw.strip()
-        m = re.match(r"#\s*E\d+.*?目标\s*(\d+)\s*秒", s)
-        if m: ep["target"] = int(m.group(1)); continue
+        m = re.match(r"#\s*([EC])\d+.*?目标\s*(\d+)\s*秒", s)
+        if m: ep["target"], ep["clip"] = int(m.group(2)), m.group(1) == "C"; continue
         m = re.match(r"##\s*(S\d+).*?人物[:：](.*)$", s)
         if m:
             scene = m.group(1); ep["cast"] |= {x.strip() for x in re.split(r"[,，、]", m.group(2)) if x.strip()}; continue
@@ -40,10 +41,13 @@ def gates_script(ep):
     if ep["target"] and abs(total - ep["target"]) > ep["target"] * TOL:
         errs.append(f"估算时长 {total:.0f}s，偏离目标 {ep['target']}s ±{int(TOL*100)}%")
     if not any("钩子" in b["tags"] for b in beats[:3]): errs.append("前 3 拍内没有 #钩子")
-    if "悬念" not in beats[-1]["tags"]: errs.append("最后一拍没有 #悬念")
+    if ep["clip"]:
+        if not beats[-1]["tags"] & {"悬念", "甜点", "爽点"}: errs.append("切片最后一拍要停在 #甜点、#爽点 或 #悬念")
+    elif "悬念" not in beats[-1]["tags"]: errs.append("最后一拍没有 #悬念")
+    line_max = CLIP_LINE_MAX if ep["clip"] else LINE_MAX
     for b in beats:
         if b["kind"] == "台词":
-            if len(b["line"]) > LINE_MAX: errs.append(f"第 {b['n']} 拍台词超过 {LINE_MAX} 字")
+            if len(b["line"]) > line_max: errs.append(f"第 {b['n']} 拍台词超过 {line_max} 字")
             sp = b["speaker"].replace("（内心）", "").replace("(内心)", "")
             if sp not in ep["cast"] and sp not in ("旁白", "VO", "广播") and not sp.startswith("旁白"):
                 errs.append(f"第 {b['n']} 拍说话人「{b['speaker']}」不在场次人物表里")
