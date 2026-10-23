@@ -42,6 +42,11 @@ h3 { margin: 0; font: 600 16px var(--display) }
 .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center }
 .picks { display: flex; gap: 8px; flex-wrap: wrap }
 .pick { font: 14px/1.4 var(--body); padding: 7px 13px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); color: var(--ink); cursor: pointer }
+.pick.add { border-style: dashed; color: var(--muted) }
+.pick.own { border-color: var(--gold) }
+.pick.own::before { content: "✎ "; color: var(--gold) }
+.ownin { font: 14px/1.4 var(--body); padding: 6px 12px; border-radius: 999px; border: 1px solid var(--jade); background: var(--paper); color: var(--ink); width: 15em; max-width: 100% }
+.field { width: 100%; font: 15px/1.5 var(--body); padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink) }
 .pick[aria-pressed="true"] { background: var(--seal-soft); border-color: var(--seal); color: var(--seal); font-weight: 600 }
 .group { display: grid; gap: 8px }
 .group > span { font-size: 13px; color: var(--muted) }
@@ -64,10 +69,11 @@ h3 { margin: 0; font: 600 16px var(--display) }
 .script { display: grid; gap: 4px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px }
 .beat { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 6px; font-size: 15px }
 .beat .no { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; padding-top: 3px }
-.beat.line { cursor: text }
+.beat.line, .beat.act { cursor: text }
 .beat.line .t { font-family: var(--display); font-size: 16px }
 .beat .who { color: var(--jade); font-weight: 600 }
 .beat .tag { font-size: 12px; color: var(--seal); margin-left: 4px }
+.beat.act.mine .t::after { content: " ✎ 你写的"; font: 12px var(--body); color: var(--gold) }
 .beat.mine .t::after { content: " ✎ 你写的"; font: 12px var(--body); color: var(--gold) }
 .beat input { width: 100%; font: 16px var(--display); background: var(--paper); color: var(--ink); border: 1px solid var(--jade); border-radius: 6px; padding: 2px 6px }
 .slugline { font-size: 13px; color: var(--muted); margin-bottom: 4px }
@@ -175,7 +181,7 @@ const EXAMPLE = {
     ],
   }],
 };
-const BLANK = () => ({ example: false, step: 0, deckIdx: 0, likes: [], skips: [], cast: { her: { name: "", look: "", vibe: "" }, him: { name: "", look: "", vibe: "" } }, world: "", rule: "", scene: { type: "", place: "" }, draft: null, clips: [] });
+const BLANK = () => ({ example: false, step: 0, deckIdx: 0, likes: [], skips: [], cast: { her: { name: "", look: "", vibe: "" }, him: { name: "", look: "", vibe: "" } }, world: "", rule: "", scene: { type: "", place: "", wish: "" }, draft: null, clips: [] });
 
 let S, sample = null, downloads = null, busy = false, justStamped = false;
 const $ = id => document.getElementById(id);
@@ -186,11 +192,13 @@ function save() { if (S.example) return; try { localStorage.setItem(KEY, JSON.st
 function touch() { if (S.example) { const keep = S; S = Object.assign(BLANK(), structuredClone(keep), { example: false }); } save(); }
 S = load();
 
+const ownLikes = () => S.likes.filter(l => !DECK.some(c => c.v === l));
 function likesOf(g) { return DECK.filter(c => c.g === g && S.likes.includes(c.v)).map(c => c.v); }
 function tasteLine() {
   const a = likesOf("男主")[0], b = likesOf("CP")[0], c = likesOf("名场面")[0];
-  if (!a && !b && !c) return "";
-  return [a, b, c].filter(Boolean).join(" × ");
+  if (!a && !b && !c && !ownLikes().length) return "";
+  const own = ownLikes()[0];
+  return [a, b, c, own].filter(Boolean).join(" × ");
 }
 function done(i) {
   const k = STEPS[i].k;
@@ -202,7 +210,7 @@ function done(i) {
 }
 const nameOf = w => S.cast[w].name.trim() || (w === "her" ? "她" : "他");
 function castText() {
-  return ["her", "him"].map(w => { const c = S.cast[w]; const look = (LOOKS[w].find(l => l.v === c.look) || {}).p || ""; return `${nameOf(w)}（${w === "her" ? "女主" : "男主"}）：${c.look || "外形未定"}，${c.vibe || "性格未定"}${look ? "｜look: " + look : ""}`; }).join("\n");
+  return ["her", "him"].map(w => { const c = S.cast[w]; const look = (LOOKS[w].find(l => l.v === c.look) || {}).p || ""; return `${nameOf(w)}（${w === "her" ? "女主" : "男主"}）：${c.look || "外形未定"}，${c.vibe || "性格未定"}${c.quirk ? "；口头禅/小怪癖：" + c.quirk : ""}${look ? "｜look: " + look : ""}`; }).join("\n");
 }
 
 // ---------- AI ----------
@@ -220,13 +228,17 @@ function brief() {
 世界：${S.world}；特殊规则：${S.rule}
 角色：\n${castText()}`;
 }
+const wish = () => (S.scene.wish || "").trim();
 async function draftScene() {
   if (!sample) throw { message: "连不上 Claude。" };
   const r = await sample.json(`你是竖屏短剧编剧，帮作者把他喜欢的元素拼成一条名场面切片，要让作者一看就觉得「对，就是这个味儿」。
 ${brief()}
-这条名场面：类型「${S.scene.type}」，地点「${S.scene.place}」。要用上特殊规则，并体现两位主角的性格。
+这条名场面：类型「${S.scene.type}」，地点「${S.scene.place}」。要用上特殊规则，并体现两位主角的性格和口头禅或小怪癖。
+${wish() ? `作者亲手写了这一句（台词或画面），必须作为单独一拍原样放进去，一字不改，并让整条围绕它：${wish()}` : ""}
 ${FORMAT}`, { modelTier: "complex", cache: false });
-  S.draft = { title: r.title || `${S.scene.type}`, type: S.scene.type, place: S.scene.place, flavors: [], beats: clean(r.beats) };
+  const beats = clean(r.beats); const w = wish(); const norm = t => t.replace(/[，。！？…、,.!?\s「」“”]/g, "");
+  if (w) { const hit = beats.find(b => norm(b.t) === norm(w) || norm(b.t).includes(norm(w))); if (hit) { hit.t = hit.k === "line" && hit.t !== w && norm(hit.t) === norm(w) ? w : hit.t; hit.mine = true; } else beats.splice(Math.min(2, beats.length), 0, { k: "act", t: w, mine: true }); }
+  S.draft = { title: r.title || `${S.scene.type}`, type: S.scene.type, place: S.scene.place, flavors: [], beats };
 }
 async function flavor(f) {
   if (!sample) throw { message: "连不上 Claude。" };
@@ -275,7 +287,18 @@ function render() {
   if (cur && r.scrollWidth > r.clientWidth) r.scrollLeft = cur.offsetLeft - (r.clientWidth - cur.offsetWidth) / 2;
   justStamped = false;
 }
-const pickBtns = (list, sel, attr) => `<div class="picks">${list.map(x => { const v = typeof x === "string" ? x : x.v; return `<button type="button" class="pick" ${attr}="${esc(v)}" aria-pressed="${sel === v}">${esc(v)}</button>`; }).join("")}</div>`;
+const pickBtns = (list, sel, attr) => {
+  const vals = list.map(x => typeof x === "string" ? x : x.v); const extra = sel && !vals.includes(sel) ? [sel] : [];
+  return `<div class="picks">${[...vals, ...extra].map(v => `<button type="button" class="pick${extra.includes(v) ? " own" : ""}" ${attr}="${esc(v)}" aria-pressed="${sel === v}">${esc(v)}</button>`).join("")}<button type="button" class="pick add" data-own="${attr}">＋自己写</button></div>`;
+};
+const HINT = { "data-look-her": "比如：红发，左眼下一颗泪痣", "data-look-him": "比如：总戴一只黑手套", "data-vibe-her": "比如：一紧张就背古诗", "data-vibe-him": "比如：嘴上嫌弃，手比嘴快", "data-world": "比如：末日后的奶茶店", "data-rule": "比如：他说一句真话，头上就开一朵花", "data-type": "比如：替她系鞋带", "data-place": "比如：图书馆最后一排", "data-like": "比如：契约婚姻、年下、替身" };
+const SET = {
+  "data-look-her": v => S.cast.her.look = v, "data-look-him": v => S.cast.him.look = v,
+  "data-vibe-her": v => S.cast.her.vibe = v, "data-vibe-him": v => S.cast.him.vibe = v,
+  "data-world": v => S.world = v, "data-rule": v => S.rule = v,
+  "data-type": v => S.scene.type = v, "data-place": v => S.scene.place = v,
+  "data-like": v => v.split(/[、,，\s]+/).filter(Boolean).forEach(x => { if (!S.likes.includes(x)) S.likes.push(x); }),
+};
 const VIEWS = {
   taste: () => {
     const c = DECK[S.deckIdx]; const t = tasteLine();
@@ -284,30 +307,33 @@ const VIEWS = {
       <div class="row"><button class="btn" type="button" id="skipBtn">跳过</button><button class="btn primary" type="button" id="likeBtn">喜欢</button></div>
       <span class="meter">${S.deckIdx + 1} / ${DECK.length}　已喜欢 ${S.likes.length} 个</span></div>` : ""}
     ${t ? `<div class="taste"><span>你的口味</span><b>${esc(t)}</b>${S.likes.length >= 5 ? `<span>${esc(S.likes.join("、"))}</span>` : ""}</div>` : ""}
+    <div class="group"><span>卡片里没有的？自己加你喜欢的元素</span><div class="picks">${ownLikes().map(l => `<button type="button" class="pick own" aria-pressed="true" data-unlike="${esc(l)}" title="再点一下去掉">${esc(l)}</button>`).join("")}<button type="button" class="pick add" data-own="data-like">＋自己写</button></div></div>
     ${!c ? `<div class="row"><button class="btn ghost" type="button" id="redoBtn">重新测</button><button class="btn primary" type="button" data-go="1">去捏人</button></div>` : ""}`;
   },
   cast: () => `<h2>捏出你的女主和男主</h2><p class="why">点选外形和性格。名字可以随便起，也可以先空着。</p>
     <div class="chars">${["her", "him"].map(w => `<div class="char"><h3>${w === "her" ? "女主" : "男主"}</h3>
       <input type="text" id="name-${w}" value="${esc(S.cast[w].name)}" placeholder="${w === "her" ? "起个名字，比如小芜" : "起个名字，比如莱昂"}" aria-label="${w === "her" ? "女主名字" : "男主名字"}">
       <div class="group"><span>外形</span>${pickBtns(LOOKS[w], S.cast[w].look, `data-look-${w}`)}</div>
-      <div class="group"><span>性格</span>${pickBtns(VIBES[w], S.cast[w].vibe, `data-vibe-${w}`)}</div></div>`).join("")}</div>
+      <div class="group"><span>性格</span>${pickBtns(VIBES[w], S.cast[w].vibe, `data-vibe-${w}`)}</div>
+      <div class="group"><span>口头禅或小怪癖（可选）</span><input type="text" class="field" id="quirk-${w}" value="${esc(S.cast[w].quirk || "")}" placeholder="${w === "her" ? "比如：一饿就变凶" : "比如：说谎时耳朵会红"}" maxlength="40"></div></div>`).join("")}</div>
     ${likesOf("男主").length ? `<p class="meter">你喜欢的男主类型：${esc(likesOf("男主").join("、"))}</p>` : ""}`,
   world: () => `<h2>选一个世界，加一条特殊规则</h2><p class="why">规则是这部剧最好玩的地方，好多名场面都从它长出来。</p>
     <div class="group"><span>世界</span>${pickBtns(WORLDS, S.world, "data-world")}</div>
-    <div class="group"><span>特殊规则</span>${pickBtns(RULES, S.rule, "data-rule")}</div>
-    <div class="group"><span>或者写你自己的规则（一句话）</span><textarea id="ruleOwn" rows="2" placeholder="比如：他每说一句真话，头上就会开一朵花">${RULES.includes(S.rule) ? "" : esc(S.rule)}</textarea></div>`,
+    <div class="group"><span>特殊规则</span>${pickBtns(RULES, S.rule, "data-rule")}</div>`,
   scene: () => {
     const liked = likesOf("名场面"); const types = [...new Set([...liked, ...DECK.filter(c => c.g === "名场面").map(c => c.v)])].slice(0, 6);
     const d = S.draft;
-    return `<h2>出一条名场面</h2><p class="why">选一种名场面和地点，AI 按你的口味拼一条 20 秒左右的切片。然后用下面的按钮调味，台词点一下就能自己改。</p>
+    return `<h2>出一条名场面</h2><p class="why">选一种名场面和地点，AI 按你的口味拼一条 20 秒左右的切片。然后调味，或者点任意一拍自己改。</p>
     <div class="group"><span>名场面${liked.length ? "（你喜欢的排在前面）" : ""}</span>${pickBtns(types, S.scene.type, "data-type")}</div>
     <div class="group"><span>地点</span>${pickBtns(PLACES, S.scene.place, "data-place")}</div>
+    <div class="group"><span>你脑子里已经有的一句台词或一个画面（可选，AI 会一字不改地用上）</span><input type="text" class="field" id="wish" value="${esc(S.scene.wish || "")}" placeholder="比如：三百年了，番茄是酸的" maxlength="40"></div>
     <div class="row"><button class="btn primary" type="button" id="draftBtn" ${sample && S.scene.type && S.scene.place ? "" : "disabled"}>${d ? "换一版" : "拼一条名场面"}</button>${!sample ? `<span class="meter">要连上 Claude 才能出名场面</span>` : ""}</div>
     ${d ? `<div class="grid" style="display:grid;gap:12px"><h3>${esc(d.title)}</h3>
       <div class="script"><div class="slugline">内景 · ${esc(d.place)} · ${esc(S.world)}　｜　${esc(nameOf("her"))}、${esc(nameOf("him"))}</div>
-      ${d.beats.map((b, i) => b.k === "line" ? `<div class="beat line ${b.mine ? "mine" : ""}" data-edit="${i}" role="button" tabindex="0" title="点一下自己改"><span class="no">${i + 1}</span><span><span class="who">${esc(b.who)}</span>（${esc(b.how || "")}）<span class="t">${esc(b.t)}</span>${b.tag ? `<span class="tag">#${esc(b.tag)}</span>` : ""}</span></div>` : `<div class="beat"><span class="no">${i + 1}</span><span>${esc(b.t)}${b.tag ? `<span class="tag">#${esc(b.tag)}</span>` : ""}</span></div>`).join("")}</div>
+      ${d.beats.map((b, i) => b.k === "line" ? `<div class="beat line ${b.mine ? "mine" : ""}" data-edit="${i}" role="button" tabindex="0" title="点一下自己改"><span class="no">${i + 1}</span><span><span class="who">${esc(b.who)}</span>（${esc(b.how || "")}）<span class="t">${esc(b.t)}</span>${b.tag ? `<span class="tag">#${esc(b.tag)}</span>` : ""}</span></div>` : `<div class="beat act ${b.mine ? "mine" : ""}" data-edit="${i}" role="button" tabindex="0" title="点一下自己改"><span class="no">${i + 1}</span><span><span class="t">${esc(b.t)}</span>${b.tag ? `<span class="tag">#${esc(b.tag)}</span>` : ""}</span></div>`).join("")}</div>
       <div class="gates">${gates(d.beats).map(g => `<span class="gate ${g.ok ? "" : "bad"}">${g.ok ? "✓" : "✗"} ${esc(g.t)}</span>`).join("")}</div>
-      <div class="group"><span>调味${d.flavors.length ? `（已调：${esc(d.flavors.join("、"))}）` : ""}</span><div class="flavors">${FLAVORS.map(f => `<button type="button" class="pick" data-flavor="${f}" ${sample ? "" : "disabled"}>${f}</button>`).join("")}</div></div>
+      <div class="group"><span>调味${d.flavors.length ? `（已调：${esc(d.flavors.join("、"))}）` : ""}</span><div class="flavors">${FLAVORS.map(f => `<button type="button" class="pick" data-flavor="${f}" ${sample ? "" : "disabled"}>${f}</button>`).join("")}</div>
+      <div class="row"><input type="text" class="field" id="flavorOwn" placeholder="或者直接说想怎么改，比如：让他先低头" maxlength="60" style="flex:1 1 220px;width:auto"><button class="btn" type="button" id="flavorGo" ${sample ? "" : "disabled"}>按我说的改</button></div></div>
       <div class="row"><button class="btn primary" type="button" id="keepBtn">满意，收进作品集</button></div></div>` : ""}`;
   },
   wall: () => {
@@ -315,7 +341,7 @@ const VIEWS = {
     const last = S.clips[S.clips.length - 1];
     return `<h2>你的作品集</h2>
     ${last ? `<div class="cheer"><span class="stamp ${justStamped ? "new" : ""}">已<br>收录</span><p>${cheer(last)}</p></div>` : ""}
-    <div class="stats"><div><b>${S.clips.length}</b><span>条名场面</span></div><div><b>${used.size}</b><span>种名场面类型</span></div><div><b>${mine}</b><span>句你亲手写的台词</span></div></div>
+    <div class="stats"><div><b>${S.clips.length}</b><span>条名场面</span></div><div><b>${used.size}</b><span>种名场面类型</span></div><div><b>${mine}</b><span>处你亲手写的</span></div></div>
     ${S.clips.length ? `<div class="wall">${S.clips.map((c, i) => { const q = c.beats.find(b => b.mine) || c.beats.find(b => b.k === "line"); return `<div class="tile"><span class="stamp">C${String(i + 1).padStart(2, "0")}</span><h3>${esc(c.title)}</h3>${q ? `<span class="quote">「${esc(q.t)}」</span>` : ""}<span class="meta">${esc(c.type)} · ${esc(c.place)}${c.flavors?.length ? " · " + esc(c.flavors.join("、")) : ""}</span><div class="row"><button class="btn ghost" type="button" data-copy="${i}">复制剧本</button><button class="btn ghost" type="button" data-del="${i}">删除</button></div></div>`; }).join("")}</div>` : `<p class="why">还没有作品。去「出名场面」拼第一条吧。</p>`}
     <div class="row"><button class="btn primary" type="button" data-go="3">再来一条</button><button class="btn" type="button" id="exportBtn" ${S.clips.length ? "" : "disabled"}>导出项目卡</button></div>`;
   },
@@ -324,19 +350,21 @@ function cheer(c) {
   const hits = [c.type, ...S.likes.filter(l => l !== c.type && DECK.find(d => d.v === l && d.g !== "名场面"))].filter(l => S.likes.includes(l)).slice(0, 2);
   const n = S.clips.length;
   const a = hits.length ? `这条用上了你喜欢的「${hits.join("」和「")}」。` : `这条是你拼出来的「${c.type}」。`;
-  const b = c.mine ? `里面有 ${c.mine} 句是你亲手写的台词。` : `下一条试试点一句台词自己改，会更像你。`;
+  const b = c.mine ? `里面有 ${c.mine} 处是你亲手写的。` : `下一条试试点一拍自己改，会更像你。`;
   const m = n === 1 ? "第一条名场面完成了！" : n === 3 ? "已经 3 条了，够剪一支预告了。" : `这是你的第 ${n} 条。`;
   return esc(m + a + b);
 }
 const BIND = {
   taste() {
     const go = like => { const c = DECK[S.deckIdx]; if (!c) return; (like ? S.likes : S.skips).push(c.v); S.deckIdx++; touch(); render(); };
+    document.querySelectorAll("[data-unlike]").forEach(b => b.addEventListener("click", () => { S.likes = S.likes.filter(l => l !== b.dataset.unlike); touch(); render(); }));
     $("likeBtn")?.addEventListener("click", () => go(true)); $("skipBtn")?.addEventListener("click", () => go(false));
     $("redoBtn")?.addEventListener("click", () => { S.likes = []; S.skips = []; S.deckIdx = 0; touch(); render(); });
   },
   cast() {
     ["her", "him"].forEach(w => {
       $("name-" + w).addEventListener("input", e => { S.cast[w].name = e.target.value; touch(); });
+      $("quirk-" + w).addEventListener("input", e => { S.cast[w].quirk = e.target.value; touch(); });
       document.querySelectorAll(`[data-look-${w}]`).forEach(b => b.addEventListener("click", () => { S.cast[w].look = b.getAttribute(`data-look-${w}`); touch(); render(); }));
       document.querySelectorAll(`[data-vibe-${w}]`).forEach(b => b.addEventListener("click", () => { S.cast[w].vibe = b.getAttribute(`data-vibe-${w}`); touch(); render(); }));
     });
@@ -344,17 +372,19 @@ const BIND = {
   world() {
     document.querySelectorAll("[data-world]").forEach(b => b.addEventListener("click", () => { S.world = b.dataset.world; touch(); render(); }));
     document.querySelectorAll("[data-rule]").forEach(b => b.addEventListener("click", () => { S.rule = b.dataset.rule; touch(); render(); }));
-    $("ruleOwn").addEventListener("change", e => { if (e.target.value.trim()) { S.rule = e.target.value.trim(); touch(); render(); } });
   },
   scene() {
     document.querySelectorAll("[data-type]").forEach(b => b.addEventListener("click", () => { S.scene.type = b.dataset.type; touch(); render(); }));
     document.querySelectorAll("[data-place]").forEach(b => b.addEventListener("click", () => { S.scene.place = b.dataset.place; touch(); render(); }));
+    $("wish").addEventListener("input", e => { S.scene.wish = e.target.value; touch(); });
     $("draftBtn")?.addEventListener("click", e => run(e.target, draftScene));
+    $("flavorGo")?.addEventListener("click", e => { const f = $("flavorOwn").value.trim(); if (f) run(e.target, () => flavor(f)); else $("flavorOwn").focus(); });
+    $("flavorOwn")?.addEventListener("keydown", e => { if (e.key === "Enter") $("flavorGo").click(); });
     document.querySelectorAll("[data-flavor]").forEach(b => b.addEventListener("click", () => run(b, () => flavor(b.dataset.flavor))));
     document.querySelectorAll("[data-edit]").forEach(el => { const open = () => editLine(el); el.addEventListener("click", open); el.addEventListener("keydown", e => { if (e.key === "Enter") open(); }); });
     $("keepBtn")?.addEventListener("click", () => {
       const d = S.draft; S.clips.push({ ...d, mine: d.beats.filter(b => b.mine).length, at: new Date().toISOString().slice(0, 10) });
-      S.draft = null; S.step = 4; justStamped = true; touch(); render(); window.scrollTo({ top: 0 });
+      S.draft = null; S.scene.wish = ""; S.step = 4; justStamped = true; touch(); render(); window.scrollTo({ top: 0 });
     });
   },
   wall() {
@@ -381,6 +411,14 @@ async function exportCard() {
   try { await navigator.clipboard.writeText(text); setStatus("已复制到剪贴板。"); } catch (e) { setStatus("当前环境不能保存文件，下面是全文，可以手动复制。"); $("main").insertAdjacentHTML("beforeend", `<pre class="card-out">${esc(text)}</pre>`); }
 }
 
+document.addEventListener("click", e => {
+  const a = e.target.closest("[data-own]"); if (!a) return;
+  const k = a.dataset.own; const inp = document.createElement("input"); inp.type = "text"; inp.className = "ownin"; inp.maxLength = 40; inp.placeholder = HINT[k] || "写你想要的"; inp.setAttribute("aria-label", "自己写");
+  a.replaceWith(inp); inp.focus(); let fin = false;
+  const commit = ok => { if (fin) return; fin = true; const v = inp.value.trim(); if (ok && v) { SET[k](v); touch(); } render(); };
+  inp.addEventListener("keydown", ev => { if (ev.key === "Enter") commit(true); if (ev.key === "Escape") commit(false); });
+  inp.addEventListener("blur", () => commit(true));
+});
 document.addEventListener("click", e => { const g = e.target.closest("[data-go]"); if (g) { S.step = +g.dataset.go; save(); render(); window.scrollTo({ top: 0 }); } });
 $("newBtn").addEventListener("click", () => { S = BLANK(); save(); render(); });
 $("exampleBtn").addEventListener("click", () => { S = structuredClone(EXAMPLE); render(); });
