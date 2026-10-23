@@ -1,0 +1,405 @@
+<title>短剧质量门检查器</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+SC:wght@400;500;700;900&display=swap">
+<style>
+/* Layout: editor on the left like a script draft, live gate panel and rhythm timeline on the right */
+:root {
+  --bg: #f4f5f7; --panel: #ffffff; --ink: #1b1e24; --muted: #626a75; --rule: #dde0e5; --field: #fbfbfc;
+  --accent: #3b4cc0; --pass: #2f8a4c; --fail: #c23b32; --warn: #b7791f;
+  --hook: #c23b32; --shuang: #d9822b; --sweet: #d6488f; --twist: #6f4bd8; --cliff: #1f6fb2;
+  --act: #c9ced6; --dlg: #8d97a6;
+  --sans: "Noto Sans SC", "PingFang SC", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111317; --panel: #191c22; --ink: #e7e9ee; --muted: #9aa2ad; --rule: #2c3038; --field: #14161b;
+  --accent: #8d9bff; --pass: #5cc27c; --fail: #ff7a70; --warn: #e8ae52;
+  --hook: #ff7a70; --shuang: #f2a65a; --sweet: #f27ab8; --twist: #a68cff; --cliff: #64a8e8;
+  --act: #3a404b; --dlg: #67707e; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #111317; --panel: #191c22; --ink: #e7e9ee; --muted: #9aa2ad; --rule: #2c3038; --field: #14161b;
+  --accent: #8d9bff; --pass: #5cc27c; --fail: #ff7a70; --warn: #e8ae52;
+  --hook: #ff7a70; --shuang: #f2a65a; --sweet: #f27ab8; --twist: #a68cff; --cliff: #64a8e8;
+  --act: #3a404b; --dlg: #67707e; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 14.5px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 48px }
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 18px }
+header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 12px 24px }
+h1 { font-weight: 900; font-size: 24px; margin: 0; letter-spacing: .02em; text-wrap: balance }
+.sub { color: var(--muted); margin: 2px 0 0; font-size: 13.5px }
+.tabs { display: flex; gap: 4px; background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 4px }
+.tabs button { font: inherit; border: 0; background: transparent; color: var(--muted); padding: 7px 16px; border-radius: 7px; cursor: pointer; display: flex; gap: 8px; align-items: center }
+.tabs button[aria-pressed="true"] { background: var(--ink); color: var(--bg) }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted) }
+.dot.ok { background: var(--pass) } .dot.bad { background: var(--fail) }
+button:focus-visible, textarea:focus-visible, label.btn:focus-within { outline: 2px solid var(--accent); outline-offset: 2px }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 18px; align-items: start }
+@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr) } }
+.card { background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 16px; min-width: 0; display: grid; gap: 12px }
+.card h2 { font-size: 13px; font-weight: 700; letter-spacing: .06em; color: var(--muted); margin: 0; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap }
+.tools { display: flex; gap: 6px; flex-wrap: wrap }
+.btn { font: inherit; font-size: 12.5px; font-weight: 500; letter-spacing: 0; color: var(--ink); background: var(--field); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 10px; cursor: pointer }
+.btn:hover { border-color: var(--muted) }
+label.btn input { position: absolute; opacity: 0; width: 1px; height: 1px }
+textarea { width: 100%; min-height: 460px; resize: vertical; font-family: var(--mono); font-size: 13px; line-height: 1.75; color: var(--ink); background: var(--field); border: 1px solid var(--rule); border-radius: 8px; padding: 12px; tab-size: 2; white-space: pre; overflow: auto }
+#shotsInput { min-height: 300px }
+.hint { font-size: 12.5px; color: var(--muted); margin: 0 }
+.hint code { font-family: var(--mono); font-size: 12px; background: var(--field); border: 1px solid var(--rule); border-radius: 4px; padding: 0 4px }
+
+.summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px }
+.stat { display: grid; gap: 2px }
+.stat .k { font-size: 12px; color: var(--muted) }
+.stat .v { font-family: var(--mono); font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.2 }
+.stat .v small { font-size: 13px; color: var(--muted); font-weight: 400 }
+.verdict { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; font-weight: 700 }
+.verdict.ok { background: color-mix(in srgb, var(--pass) 14%, transparent); color: var(--pass) }
+.verdict.bad { background: color-mix(in srgb, var(--fail) 12%, transparent); color: var(--fail) }
+
+.gauge { position: relative; height: 10px; background: var(--field); border: 1px solid var(--rule); border-radius: 5px }
+.gauge .band { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--pass) 22%, transparent) }
+.gauge .mark { position: absolute; top: -4px; bottom: -4px; width: 3px; border-radius: 2px; background: var(--ink) }
+.gauge-l { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11.5px; color: var(--muted) }
+
+.timeline { display: grid; gap: 4px }
+.tl-tags, .tl-bar, .tl-gap { position: relative; height: 16px }
+.tl-bar { height: 22px; display: flex; border-radius: 4px; overflow: hidden; background: var(--field) }
+.tl-bar span { height: 100%; border-right: 1px solid var(--panel); cursor: pointer; min-width: 1px }
+.tl-bar span.act { background: var(--act) } .tl-bar span.dlg { background: var(--dlg) }
+.tl-bar span.bad { background: var(--fail) }
+.tl-tags i { position: absolute; top: 2px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; border: 2px solid var(--panel); cursor: pointer }
+.tl-gap b { position: absolute; top: 4px; height: 8px; border-radius: 4px; background: repeating-linear-gradient(45deg, var(--fail) 0 4px, transparent 4px 8px); opacity: .8 }
+.tl-ticks { position: relative; height: 14px; font-family: var(--mono); font-size: 10.5px; color: var(--muted) }
+.tl-ticks span { position: absolute; transform: translateX(-50%) }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted) }
+.legend span { display: inline-flex; align-items: center; gap: 5px }
+.legend i { width: 10px; height: 10px; border-radius: 50% }
+.legend i.sq { border-radius: 2px }
+
+.gates { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none }
+.gates li { border-top: 1px solid var(--rule); padding: 8px 0 }
+.gates li:first-child { border-top: 0 }
+.g-hd { display: flex; gap: 10px; align-items: baseline }
+.g-ic { font-family: var(--mono); font-weight: 600; width: 16px; flex: none }
+.g-ic.ok { color: var(--pass) } .g-ic.bad { color: var(--fail) } .g-ic.skip { color: var(--muted) }
+.g-nm { flex: 1; min-width: 0 }
+.g-ct { font-family: var(--mono); font-size: 12px; color: var(--fail) }
+.g-list { margin: 6px 0 0 26px; padding: 0; list-style: none; display: grid; gap: 3px }
+.g-list button { font: inherit; font-size: 13px; text-align: left; color: var(--ink); background: transparent; border: 0; padding: 2px 6px; margin-left: -6px; border-radius: 4px; cursor: pointer }
+.g-list button:hover { background: var(--field) }
+.g-list button[disabled] { cursor: default }
+.g-list button::before { content: "→ "; color: var(--fail) }
+.empty { color: var(--muted); font-size: 13px }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>短剧质量门检查器</h1>
+      <p class="sub">粘贴剧本或分镜，右边实时显示哪些门没过、问题落在哪一拍。示例是《THE UNBOUND》第 1 集前 50 秒。</p>
+    </div>
+    <div class="tabs" role="group" aria-label="检查对象">
+      <button type="button" id="tab-script" aria-pressed="true"><span class="dot" id="dot-script"></span>剧本</button>
+      <button type="button" id="tab-shots" aria-pressed="false"><span class="dot" id="dot-shots"></span>分镜</button>
+    </div>
+  </header>
+
+  <section class="grid" id="view-script">
+    <div class="card">
+      <h2>剧本 3-script.md
+        <span class="tools">
+          <label class="btn">导入文件<input type="file" id="scriptFile" accept=".md,.txt"></label>
+          <button class="btn" type="button" id="scriptCopy">复制</button>
+          <button class="btn" type="button" id="scriptReset">恢复示例</button>
+        </span>
+      </h2>
+      <textarea id="scriptInput" spellcheck="false" aria-label="剧本文本"></textarea>
+      <p class="hint">格式：<code># E01 标题 目标 N 秒</code> · <code>## S01 场景 ｜ 人物：甲, 乙</code> · <code>1. [动作] … #钩子</code> · <code>2. [台词] 说话人｜语气｜台词</code>。标签可用 #钩子 #爽点 #甜点 #反转 #悬念。</p>
+    </div>
+    <div class="card" id="scriptReport"></div>
+  </section>
+
+  <section class="grid" id="view-shots" hidden>
+    <div class="card">
+      <h2>分镜 4-shots.csv
+        <span class="tools">
+          <label class="btn">导入文件<input type="file" id="shotsFile" accept=".csv,.txt"></label>
+          <button class="btn" type="button" id="shotsCopy">复制</button>
+          <button class="btn" type="button" id="shotsReset">恢复示例</button>
+        </span>
+      </h2>
+      <textarea id="shotsInput" spellcheck="false" aria-label="分镜 CSV"></textarea>
+      <p class="hint">分镜按「剧本」页里的剧本对账。列：<code>shot,beats,dur,size,camera,frame_cn,video_cn,lens,camera_pos,composition,eyeline,people,sound</code>，<code>beats</code> 写连续区间如 <code>3-5</code>。</p>
+    </div>
+    <div class="card" id="shotsReport"></div>
+  </section>
+</div>
+
+<script>
+const CPS = 4.5, ACT_SEC = 2.5, LINE_MAX = 35, GAP_MAX = 20, TOL = 0.15, CUT_MIN = 2, CUT_MAX = 8, PEOPLE_MAX = 3;
+const SIZES = ["大远景","远景","大全景","全景","中全景","中景","中近景","近景","特写","大特写"];
+const TAGS = { "钩子": "--hook", "爽点": "--shuang", "甜点": "--sweet", "反转": "--twist", "悬念": "--cliff" };
+
+const SAMPLE_SCRIPT = `# E01 无契之人·冷开场 目标 50 秒
+## S01 内景 · 学院走廊 · 夜 ｜ 人物：许眠, 霍凛
+1. [动作] 霍凛把许眠抵在墙上，眼睛泛起银光 #钩子
+2. [台词] 霍凛｜压低、危险｜你对我做了什么？
+3. [动作] 许眠抬眼看他，手指攥紧衣角
+4. [台词] 许眠｜无辜｜我只是扶了一下。 #甜点
+## S02 内景 · 穹顶大厅 · 日 ｜ 人物：许眠, 白薇, 沈知白
+5. [动作] 黑场字幕「三小时前」，全息屏扫过许眠，亮起红字 NULL
+6. [台词] 白薇｜高傲｜Null 也配进以太学院？
+7. [动作] 许眠平静地看着她
+8. [台词] 许眠｜冷淡｜我是全科第一考进来的。你呢？ #爽点
+9. [动作] 白薇脸色一僵，身后有人憋笑
+10. [动作] 沈知白走近，眼里的金光闪了一下就熄灭
+11. [台词] 沈知白（内心）｜困惑｜读不到……她的情绪是一片空白？ #反转
+## S03 内景 · 穹顶大厅 · 日 ｜ 人物：许眠, 霍凛
+12. [动作] 大门被银色气浪撞开，霍凛走进来，身后浮现巨狼虚影
+13. [台词] 广播｜机械、急促｜警告，SSS 级哨兵精神暴走！
+14. [动作] 水晶吊灯断裂，朝许眠砸落
+15. [动作] 霍凛扑过来挡在她上方，吊灯在他身后炸碎 #甜点
+16. [动作] 许眠抓住他的手腕，全场骤然安静 #爽点
+17. [动作] 巨狼低下头，趴在许眠脚边
+18. [台词] 霍凛（内心）｜震惊｜我的精神世界……向她臣服了。 #反转
+19. [台词] 霍凛｜坚定｜从今天起，她是我的向导。 #悬念
+`;
+
+const SAMPLE_SHOTS = `shot,beats,dur,size,camera,frame_cn,video_cn,lens,camera_pos,composition,eyeline,people,sound
+1,1-2,4,近景,手持微推,近景，霍凛把许眠抵在大理石墙上，眼泛银光,一名银发青年把黑发少女抵在墙上，压低声音质问,50mm 中浅景深,双人 平视侧面,三分法,对方面部,2,呼吸声
+2,3-4,4,大特写,固定,大特写，许眠抬眼，手指攥紧衣角,黑发少女缓慢抬眼，轻声回答,85mm 极浅景深,少女 平视正面,中心构图,对方面部,1,心跳
+3,5-6,5,中近景,缓推,中近景，全息屏红字映在许眠脸上，白薇站在她面前,全息屏扫过灰衣少女，金发少女居高临下地开口,35mm 中景深,双人 平视,对角线,对方面部,2,警报音
+4,7-8,5,近景,固定,近景，许眠平静看着白薇,灰衣少女平静抬眼，冷淡回答,85mm 浅景深,少女 平视正面,三分法,对方面部,1,人声一静
+5,9,3,中景,固定,中景，白薇脸色一僵，身后学生憋笑,金发少女表情僵住，身后几名学生低头憋笑,35mm 中景深,人群 平视,中心构图,少女,3,憋笑声
+6,10-11,6,近景,缓推,近景，沈知白看向许眠，眼中金光熄灭,一名白衣青年看向镜头外，眼中金光闪烁后熄灭,85mm 极浅景深,青年 平视侧面,三分法,画外少女,1,高频静音
+7,12-13,6,全景,低角度缓推,全景，大门被气浪撞开，霍凛走进大厅，身后巨狼虚影,大门被银色气浪撞开，一名银发青年走进来，身后浮现巨大的狼影,24mm 深景深,大门 低角度仰拍,对称,前方,1,爆裂声 警报 狼嚎
+8,14-15,5,中景,慢动作,中景，吊灯砸向许眠，霍凛扑过来挡在她上方,水晶吊灯坠落，银发青年扑过去挡在少女上方，碎片在空中炸开,35mm 中景深,双人 俯视 30°,对角线,少女,2,水晶炸裂
+9,16,3,大特写,固定,大特写，许眠的手抓住霍凛的手腕,少女的手抓住青年的手腕,100mm 微距 极浅景深,手部 平视,中心构图,手腕,2,声音全部消失
+10,17-18,5,中景,缓拉,中景，巨狼趴在许眠脚边，霍凛看着她,巨大的银狼低头趴在少女脚边，青年怔怔地看着她,35mm 中景深,双人 平视,三分法,少女面部,2,轻柔弦乐
+11,19,4,近景,缓推,近景，霍凛把许眠拉到身侧，面对全场,银发青年把少女拉到身侧，坚定地宣告,50mm 中浅景深,双人 平视正面,中心构图,前方人群,2,全场哗然
+`;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmt = s => { s = Math.max(0, Math.round(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
+
+function parseScript(text) {
+  const ep = { target: null, cast: new Set(), beats: [] };
+  let scene = null;
+  text.split(/\r?\n/).forEach((raw, i) => {
+    const s = raw.trim(); let m;
+    if ((m = s.match(/^#\s*E\d+.*?目标\s*(\d+)\s*秒/))) { ep.target = +m[1]; return; }
+    if ((m = s.match(/^##\s*(S\d+).*?人物[:：](.*)$/))) { scene = m[1]; m[2].split(/[,，、]/).map(x => x.trim()).filter(Boolean).forEach(x => ep.cast.add(x)); return; }
+    if (!(m = s.match(/^(\d+)\.\s*\[(动作|台词)\]\s*(.*)$/))) return;
+    let body = m[3];
+    const tags = new Set([...body.matchAll(/#(钩子|爽点|甜点|反转|悬念)/g)].map(x => x[1]));
+    body = body.replace(/\s*#\S+/g, "").trim();
+    const b = { n: +m[1], kind: m[2], scene, tags, lineNo: i };
+    if (b.kind === "台词") {
+      const parts = body.split("｜").map(p => p.trim());
+      b.speaker = parts[0]; b.line = parts[parts.length - 1];
+      b.sec = Math.max(1, b.line.replace(/[，。！？…、,.!?\s]/g, "").length / CPS);
+    } else { b.text = body; b.sec = ACT_SEC; }
+    ep.beats.push(b);
+  });
+  let t = 0; ep.beats.forEach(b => { b.t = t; t += b.sec; }); ep.total = t;
+  return ep;
+}
+
+function gate(name, fails, skip) { return { name, fails, skip }; }
+
+function gatesScript(ep) {
+  const B = ep.beats, G = [];
+  if (!B.length) return [gate("解析到节拍", [{ msg: "没有解析到任何节拍，检查编号格式「1. [动作] …」" }])];
+  G.push(gate("标题写明目标时长", ep.target ? [] : [{ msg: "缺少「# E01 … 目标 N 秒」标题" }]));
+  G.push(gate("节拍编号连续", B.some((b, i) => b.n !== i + 1) ? [{ msg: "节拍编号不连续", beat: B.find((b, i) => b.n !== i + 1) }] : []));
+  G.push(gate(`时长在目标 ±${TOL * 100}% 内`, !ep.target ? [] : Math.abs(ep.total - ep.target) > ep.target * TOL ? [{ msg: `估算 ${Math.round(ep.total)} 秒，目标 ${ep.target} 秒` }] : [], !ep.target));
+  G.push(gate("前 3 拍内有 #钩子", B.slice(0, 3).some(b => b.tags.has("钩子")) ? [] : [{ msg: "开场 3 拍里没有钩子", beat: B[0] }]));
+  G.push(gate("最后一拍是 #悬念", B[B.length - 1].tags.has("悬念") ? [] : [{ msg: "最后一拍没有悬念", beat: B[B.length - 1] }]));
+  G.push(gate(`单句台词 ≤ ${LINE_MAX} 字`, B.filter(b => b.kind === "台词" && b.line.length > LINE_MAX).map(b => ({ msg: `第 ${b.n} 拍台词 ${b.line.length} 字`, beat: b }))));
+  G.push(gate("说话人在场次人物表里", B.filter(b => {
+    if (b.kind !== "台词") return false;
+    const sp = b.speaker.replace(/（内心）|\(内心\)/, "");
+    return !ep.cast.has(sp) && !["旁白", "VO", "广播"].includes(sp) && !sp.startsWith("旁白");
+  }).map(b => ({ msg: `第 ${b.n} 拍「${b.speaker}」不在人物表`, beat: b }))));
+  G.push(gate("动作里不混引号台词", B.filter(b => b.kind === "动作" && b.text.includes("“")).map(b => ({ msg: `第 ${b.n} 拍动作里有对白`, beat: b }))));
+  const scenes = [...new Set(B.map(b => b.scene))];
+  G.push(gate("每场至少一个动作节拍", scenes.filter(sc => !B.some(b => b.scene === sc && b.kind === "动作")).map(sc => ({ msg: `${sc || "未命名场次"} 是纯对白场`, beat: B.find(b => b.scene === sc) }))));
+  const gaps = []; let last = 0;
+  B.forEach(b => { if ([...b.tags].length) { if (b.t - last > GAP_MAX) gaps.push({ msg: `${fmt(last)}–${fmt(b.t)} 共 ${Math.round(b.t - last)} 秒没有爽点 / 甜点 / 反转`, beat: b, from: last, to: b.t }); last = b.t; } });
+  G.push(gate(`爽点间隔 ≤ ${GAP_MAX} 秒`, gaps));
+  return G;
+}
+
+function parseCSV(text) {
+  const rows = []; let row = [], f = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true;
+    else if (c === ",") { row.push(f); f = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(f); f = ""; if (row.some(x => x.trim())) rows.push(row); row = []; }
+    else f += c;
+  }
+  row.push(f); if (row.some(x => x.trim())) rows.push(row);
+  if (!rows.length) return [];
+  const head = rows[0].map(h => h.trim());
+  return rows.slice(1).map((r, i) => { const o = { _line: i + 1 }; head.forEach((h, j) => o[h] = (r[j] || "").trim()); return o; });
+}
+
+function gatesShots(ep, rows) {
+  const by = new Map(ep.beats.map(b => [b.n, b])), names = [...ep.cast].filter(c => c.length >= 2);
+  const G = { span: [], scene: [], dur: [], fit: [], size: [], names: [], people: [], comp: [] };
+  let covered = [], total = 0;
+  rows.forEach(r => {
+    const sid = r.shot || r._line; r._bad = false;
+    const add = (k, msg) => { G[k].push({ msg: `镜 ${sid}：${msg}`, row: r }); r._bad = true; };
+    const m = (r.beats || "").match(/^(\d+)(?:-(\d+))?$/);
+    if (!m) { add("span", "beats 格式应为 3 或 3-5"); r._dur = +r.dur || 0; total += r._dur; return; }
+    const a = +m[1], z = +(m[2] || m[1]), rng = []; for (let n = a; n <= z; n++) rng.push(n); covered.push(...rng);
+    if (new Set(rng.filter(n => by.has(n)).map(n => by.get(n).scene)).size > 1) add("scene", "跨场次");
+    const d = parseFloat(r.dur) || 0; r._dur = d; total += d;
+    if (d < CUT_MIN || d > CUT_MAX) add("dur", `时长 ${d} 秒`);
+    const need = rng.filter(n => by.has(n) && by.get(n).kind === "台词").reduce((s, n) => s + by.get(n).sec, 0);
+    if (need > d) add("fit", `台词约需 ${need.toFixed(1)} 秒，镜头只有 ${d} 秒`);
+    if (!SIZES.some(s => (r.frame_cn || "").includes(s))) add("size", "首帧提示词缺景别词");
+    const hit = names.filter(n => (r.video_cn || "").includes(n));
+    if (hit.length) add("names", `视频提示词出现 ${hit.join("、")}`);
+    if ((+r.people || 0) > PEOPLE_MAX) add("people", `同框 ${r.people} 人`);
+    const miss = ["lens", "camera_pos", "composition", "eyeline"].filter(k => !(r[k] || "").trim());
+    if (miss.length) add("comp", `缺 ${miss.join("、")}`);
+  });
+  const expect = ep.beats.map(b => b.n);
+  const covFail = [];
+  if (covered.join() !== expect.join()) {
+    const seen = new Set(covered), missing = expect.filter(n => !seen.has(n)), dup = covered.filter((n, i) => covered.indexOf(n) !== i);
+    covFail.push({ msg: [missing.length ? `漏掉第 ${missing.join("、")} 拍` : "", dup.length ? `重复认领第 ${[...new Set(dup)].join("、")} 拍` : "", !missing.length && !dup.length ? "认领顺序乱了" : ""].filter(Boolean).join("；") });
+  }
+  const totFail = ep.target && Math.abs(total - ep.target) > ep.target * TOL ? [{ msg: `分镜共 ${Math.round(total)} 秒，目标 ${ep.target} 秒` }] : [];
+  return { total, gates: [
+    gate("节拍按顺序不重不漏", covFail), gate("beats 格式正确", G.span), gate("镜头不跨场次", G.scene),
+    gate(`每镜 ${CUT_MIN}–${CUT_MAX} 秒`, G.dur), gate("台词放得进镜头", G.fit), gate(`总时长在目标 ±${TOL * 100}% 内`, totFail, !ep.target),
+    gate("首帧提示词含景别词", G.size), gate("视频提示词不写角色名", G.names), gate(`同框 ≤ ${PEOPLE_MAX} 人`, G.people), gate("构图字段齐全", G.comp)
+  ] };
+}
+
+function gateList(G, onPick) {
+  const ul = document.createElement("ul"); ul.className = "gates";
+  G.forEach(g => {
+    const li = document.createElement("li");
+    const ic = g.skip ? ["skip", "–"] : g.fails.length ? ["bad", "✗"] : ["ok", "✓"];
+    li.innerHTML = `<div class="g-hd"><span class="g-ic ${ic[0]}">${ic[1]}</span><span class="g-nm">${esc(g.name)}</span>${g.fails.length ? `<span class="g-ct">${g.fails.length} 处</span>` : ""}</div>`;
+    if (g.fails.length) {
+      const l = document.createElement("ul"); l.className = "g-list";
+      g.fails.forEach(f => { const b = document.createElement("button"); b.type = "button"; b.textContent = f.msg; if (!f.beat && !f.row) b.disabled = true; else b.onclick = () => onPick(f); const x = document.createElement("li"); x.appendChild(b); l.appendChild(x); });
+      li.appendChild(l);
+    }
+    ul.appendChild(li);
+  });
+  return ul;
+}
+
+function gaugeHTML(total, target) {
+  if (!target) return "";
+  const max = Math.max(total, target * (1 + TOL)) * 1.08, pct = v => (v / max * 100).toFixed(2) + "%";
+  return `<div class="gauge" aria-label="时长 ${Math.round(total)} 秒，目标 ${target} 秒"><div class="band" style="left:${pct(target * (1 - TOL))};width:${pct(target * TOL * 2)}"></div><div class="mark" style="left:calc(${pct(total)} - 1px)"></div></div>
+    <div class="gauge-l"><span>0</span><span>目标区间 ${fmt(target * (1 - TOL))}–${fmt(target * (1 + TOL))}</span><span>${fmt(max)}</span></div>`;
+}
+
+function ticks(total) {
+  const step = total > 240 ? 60 : total > 90 ? 30 : 10; let h = "";
+  for (let s = 0; s <= total; s += step) h += `<span style="left:${s / total * 100}%">${fmt(s)}</span>`;
+  return `<div class="tl-ticks">${h}</div>`;
+}
+
+function selectLine(ta, lineNo) {
+  const lines = ta.value.split("\n"); let start = 0;
+  for (let i = 0; i < lineNo; i++) start += lines[i].length + 1;
+  ta.focus(); ta.setSelectionRange(start, start + (lines[lineNo] || "").length);
+  const lh = parseFloat(getComputedStyle(ta).lineHeight) || 22; ta.scrollTop = Math.max(0, lineNo * lh - ta.clientHeight / 3);
+}
+
+let EP = null;
+function renderScript() {
+  const ta = $("scriptInput"), ep = EP = parseScript(ta.value), G = gatesScript(ep), out = $("scriptReport");
+  const bad = G.reduce((s, g) => s + g.fails.length, 0);
+  $("dot-script").className = "dot " + (bad ? "bad" : "ok");
+  const tagCount = ep.beats.filter(b => b.tags.size).length;
+  out.innerHTML = `<h2>检查结果</h2>
+    <div class="verdict ${bad ? "bad" : "ok"}">${bad ? `✗ ${bad} 处问题，点下方条目跳到对应行` : "✓ 全部质量门通过"}</div>
+    <div class="summary">
+      <div class="stat"><span class="k">节拍</span><span class="v">${ep.beats.length}</span></div>
+      <div class="stat"><span class="k">估算时长</span><span class="v">${fmt(ep.total)}${ep.target ? `<small> / ${fmt(ep.target)}</small>` : ""}</span></div>
+      <div class="stat"><span class="k">爽点类标签</span><span class="v">${tagCount}</span></div>
+    </div>
+    ${gaugeHTML(ep.total, ep.target)}
+    <div class="timeline" id="tl"></div>
+    <div class="legend"><span><i class="sq" style="background:var(--act)"></i>动作</span><span><i class="sq" style="background:var(--dlg)"></i>台词</span>${Object.entries(TAGS).map(([k, v]) => `<span><i style="background:var(${v})"></i>${k}</span>`).join("")}<span><i class="sq" style="background:var(--fail)"></i>超过 ${GAP_MAX} 秒的空档</span></div>`;
+  const T = ep.total || 1, tl = out.querySelector("#tl");
+  const failBeats = new Set(G.flatMap(g => g.fails.filter(f => f.beat && g.name !== `爽点间隔 ≤ ${GAP_MAX} 秒`).map(f => f.beat.n)));
+  const tags = document.createElement("div"); tags.className = "tl-tags";
+  const bar = document.createElement("div"); bar.className = "tl-bar";
+  const gap = document.createElement("div"); gap.className = "tl-gap";
+  ep.beats.forEach(b => {
+    const s = document.createElement("span"); s.className = (b.kind === "动作" ? "act" : "dlg") + (failBeats.has(b.n) ? " bad" : "");
+    s.style.width = (b.sec / T * 100) + "%"; s.title = `第 ${b.n} 拍 · ${fmt(b.t)} · ${b.kind === "台词" ? b.speaker + "：" + b.line : b.text}`;
+    s.onclick = () => selectLine(ta, b.lineNo); bar.appendChild(s);
+    [...b.tags].forEach(tg => { const i = document.createElement("i"); i.style.left = (b.t / T * 100) + "%"; i.style.background = `var(${TAGS[tg]})`; i.title = `${tg} · 第 ${b.n} 拍 · ${fmt(b.t)}`; i.onclick = () => selectLine(ta, b.lineNo); tags.appendChild(i); });
+  });
+  (G.find(g => g.name.startsWith("爽点间隔")) || { fails: [] }).fails.forEach(f => { const x = document.createElement("b"); x.style.left = (f.from / T * 100) + "%"; x.style.width = ((f.to - f.from) / T * 100) + "%"; gap.appendChild(x); });
+  tl.append(tags, bar, gap); tl.insertAdjacentHTML("beforeend", ticks(T));
+  out.appendChild(gateList(G, f => f.beat && selectLine(ta, f.beat.lineNo)));
+  renderShots();
+}
+
+function renderShots() {
+  const ta = $("shotsInput"), out = $("shotsReport");
+  if (!EP) return;
+  const rows = parseCSV(ta.value), R = gatesShots(EP, rows);
+  const bad = R.gates.reduce((s, g) => s + g.fails.length, 0);
+  $("dot-shots").className = "dot " + (bad ? "bad" : "ok");
+  out.innerHTML = `<h2>检查结果</h2>
+    <div class="verdict ${bad ? "bad" : "ok"}">${bad ? `✗ ${bad} 处问题，点下方条目跳到对应行` : "✓ 全部质量门通过"}</div>
+    <div class="summary">
+      <div class="stat"><span class="k">镜头</span><span class="v">${rows.length}</span></div>
+      <div class="stat"><span class="k">分镜总时长</span><span class="v">${fmt(R.total)}${EP.target ? `<small> / ${fmt(EP.target)}</small>` : ""}</span></div>
+      <div class="stat"><span class="k">平均每镜</span><span class="v">${rows.length ? (R.total / rows.length).toFixed(1) : "0"}<small> 秒</small></span></div>
+    </div>
+    ${gaugeHTML(R.total, EP.target)}
+    <div class="timeline" id="tl2"></div>
+    <div class="legend"><span><i class="sq" style="background:var(--dlg)"></i>镜头（宽度 = 时长）</span><span><i class="sq" style="background:var(--fail)"></i>有问题的镜头</span></div>`;
+  const T = R.total || 1, tl = out.querySelector("#tl2"), bar = document.createElement("div"); bar.className = "tl-bar";
+  rows.forEach(r => { const s = document.createElement("span"); s.className = r._bad ? "bad" : "dlg"; s.style.width = (r._dur / T * 100) + "%"; s.title = `镜 ${r.shot} · ${r.dur} 秒 · ${r.size || ""} · 第 ${r.beats} 拍`; s.onclick = () => selectLine(ta, r._line); bar.appendChild(s); });
+  tl.appendChild(bar); tl.insertAdjacentHTML("beforeend", ticks(T));
+  out.appendChild(gateList(R.gates, f => f.row && selectLine(ta, f.row._line)));
+}
+
+function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function hook(id, key, sample, render) {
+  const ta = $(id); ta.value = load(key) || sample;
+  let t; ta.addEventListener("input", () => { clearTimeout(t); t = setTimeout(() => { store(key, ta.value); render(); }, 150); });
+}
+hook("scriptInput", "gate-script", SAMPLE_SCRIPT, renderScript);
+hook("shotsInput", "gate-shots", SAMPLE_SHOTS, renderShots);
+$("scriptReset").onclick = () => { $("scriptInput").value = SAMPLE_SCRIPT; store("gate-script", SAMPLE_SCRIPT); renderScript(); };
+$("shotsReset").onclick = () => { $("shotsInput").value = SAMPLE_SHOTS; store("gate-shots", SAMPLE_SHOTS); renderShots(); };
+[["scriptFile", "scriptInput", "gate-script", renderScript], ["shotsFile", "shotsInput", "gate-shots", renderShots]].forEach(([f, id, key, r]) => {
+  $(f).addEventListener("change", e => { const file = e.target.files[0]; if (!file) return; const rd = new FileReader(); rd.onload = () => { $(id).value = rd.result; store(key, rd.result); r(); }; rd.readAsText(file, "utf-8"); e.target.value = ""; });
+});
+[["scriptCopy", "scriptInput"], ["shotsCopy", "shotsInput"]].forEach(([b, id]) => {
+  $(b).onclick = () => { const ta = $(id), btn = $(b); navigator.clipboard.writeText(ta.value).then(() => { btn.textContent = "已复制"; setTimeout(() => btn.textContent = "复制", 1200); }).catch(() => { ta.focus(); ta.select(); }); };
+});
+function showTab(k) {
+  ["script", "shots"].forEach(x => { $("tab-" + x).setAttribute("aria-pressed", x === k); $("view-" + x).hidden = x !== k; });
+  store("gate-tab", k);
+}
+$("tab-script").onclick = () => showTab("script");
+$("tab-shots").onclick = () => showTab("shots");
+renderScript();
+showTab(location.hash === "#shots" ? "shots" : (load("gate-tab") || "script"));
+</script>

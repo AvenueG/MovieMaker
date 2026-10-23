@@ -1,0 +1,343 @@
+<title>最后一碗 剧本审读</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;600;900&display=swap">
+<style>
+/* Layout: script page on the left like a printed screenplay, scorecard rail on the right; highlights live inside the script text */
+:root {
+  --paper: #f7f7f4;
+  --sheet: #ffffff;
+  --ink: #1d2124;
+  --muted: #5d656b;
+  --rule: #dfe1dc;
+  --rain: #2f5d8a;
+  --lamp: #b8761c;
+  --c1: #d1453b; --c2: #e08a1e; --c3: #b59a00; --c4: #3c9a4e;
+  --c5: #1f8f9a; --c6: #3d6fd1; --c7: #8a52c9; --c8: #c74f94;
+  --good: #3c9a4e; --warn: #c98a12; --bad: #c8463c;
+  --mix: 20%;
+  --display: "Noto Serif SC", "Songti SC", serif;
+  --body: "Noto Sans SC", "PingFang SC", system-ui, sans-serif;
+  --mono: "Courier Prime", "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #121619; --sheet: #1a1f23; --ink: #e6e8e6; --muted: #9aa3a9; --rule: #2d3439;
+  --rain: #7fa9d6; --lamp: #e0a54f;
+  --c1: #ff7a6e; --c2: #f5a54a; --c3: #e2c63c; --c4: #6cc97c;
+  --c5: #4fc3cd; --c6: #7ea4f5; --c7: #b892f0; --c8: #f08cc4;
+  --good: #6cc97c; --warn: #e8b04a; --bad: #ff7a6e; --mix: 26%; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --paper: #121619; --sheet: #1a1f23; --ink: #e6e8e6; --muted: #9aa3a9; --rule: #2d3439;
+  --rain: #7fa9d6; --lamp: #e0a54f;
+  --c1: #ff7a6e; --c2: #f5a54a; --c3: #e2c63c; --c4: #6cc97c;
+  --c5: #4fc3cd; --c6: #7ea4f5; --c7: #b892f0; --c8: #f08cc4;
+  --good: #6cc97c; --warn: #e8b04a; --bad: #ff7a6e; --mix: 26%; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.7;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 48px }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--paper) }
+.wrap { max-width: 1180px; margin: 0 auto }
+
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--paper);
+  padding-block: 18px 14px; border-bottom: 1px solid var(--rule); display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: end; justify-content: space-between }
+.title h1 { font-family: var(--display); font-weight: 900; font-size: 28px; line-height: 1.2; margin: 0; letter-spacing: .02em; text-wrap: balance }
+.title .meta { font-family: var(--mono); font-size: 12.5px; color: var(--muted); letter-spacing: .04em; margin-top: 4px }
+
+.tracks { display: flex; flex-wrap: wrap; gap: 6px; background: var(--sheet); border: 1px solid var(--rule); border-radius: 10px; padding: 4px }
+.tracks button { font: inherit; font-size: 14px; border: 0; background: transparent; color: var(--muted); padding: 7px 14px; border-radius: 7px; cursor: pointer; display: flex; gap: 8px; align-items: baseline }
+.tracks button .s { font-family: var(--mono); font-weight: 700; font-size: 13px; font-variant-numeric: tabular-nums }
+.tracks button[aria-pressed="true"] { background: var(--ink); color: var(--paper) }
+.tracks button:focus-visible, .dim:focus-visible, mark:focus-visible { outline: 2px solid var(--rain); outline-offset: 2px }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; margin-top: 24px; align-items: start }
+@media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr) } aside { order: -1 } }
+
+.sheet { background: var(--sheet); border: 1px solid var(--rule); border-radius: 4px; padding: 36px clamp(18px, 5vw, 56px) 48px; min-width: 0 }
+.sheet h2 { font-family: var(--mono); font-weight: 700; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px }
+.sheet .logline { font-family: var(--display); font-size: 17px; line-height: 1.8; margin: 0 0 30px; padding-bottom: 22px; border-bottom: 1px dashed var(--rule) }
+.slug { font-family: var(--mono); font-weight: 700; font-size: 14.5px; letter-spacing: .03em; margin: 28px 0 10px }
+.action { font-family: var(--display); font-size: 16px; line-height: 1.95; margin: 0 0 14px; max-width: 62ch }
+.dlg { margin: 6px 0 16px; padding-left: clamp(24px, 14%, 120px); max-width: 52ch }
+.dlg .who { font-family: var(--mono); font-weight: 700; font-size: 13.5px; letter-spacing: .06em }
+.dlg .paren { font-family: var(--mono); font-size: 13px; color: var(--muted) }
+.dlg .line { font-family: var(--display); font-size: 16.5px }
+.card { font-family: var(--mono); font-size: 13.5px; text-align: center; margin: 30px 0 0; color: var(--muted); letter-spacing: .06em }
+.card b { color: var(--ink); font-family: var(--display); font-size: 17px; letter-spacing: .08em }
+
+mark { background: transparent; color: inherit; border-radius: 3px; padding: 1px 2px; transition: background-color .15s, opacity .15s; -webkit-box-decoration-break: clone; box-decoration-break: clone }
+mark.on { cursor: help; background: color-mix(in srgb, var(--hl) var(--mix), transparent); box-shadow: inset 0 -2px 0 var(--hl) }
+mark.on.multi { box-shadow: inset 0 -2px 0 var(--hl), inset 0 -4px 0 var(--hl2) }
+mark.on.fade { opacity: .35 }
+mark.on.focus { background: color-mix(in srgb, var(--hl) calc(var(--mix) * 2), transparent) }
+
+aside { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 110px); display: grid; gap: 16px; min-width: 0 }
+@media (max-width: 860px) { aside { position: static } }
+.score { display: flex; align-items: baseline; gap: 10px }
+.score .n { font-family: var(--display); font-weight: 900; font-size: 54px; line-height: 1; font-variant-numeric: tabular-nums }
+.score .of { font-family: var(--mono); color: var(--muted); font-size: 14px }
+.verdict { margin: 4px 0 0; color: var(--muted); font-size: 14px }
+.legend { display: grid; gap: 4px }
+.legend .hint { font-size: 12.5px; color: var(--muted); margin: 0 0 4px }
+.dim { display: grid; grid-template-columns: 12px minmax(0, 1fr) 30px 64px; gap: 10px; align-items: center; padding: 6px 8px; border-radius: 6px; cursor: pointer; border: 1px solid transparent; background: transparent; font: inherit; color: inherit; text-align: left; width: 100% }
+.dim:hover { background: var(--sheet) }
+.dim[aria-pressed="true"] { background: var(--sheet); border-color: var(--rule) }
+.dim .sw { width: 12px; height: 12px; border-radius: 3px; background: var(--hl) }
+.dim .nm { font-size: 14px; line-height: 1.35 }
+.dim .nm small { color: var(--muted); font-family: var(--mono); font-size: 11.5px; margin-left: 4px }
+.dim .sc { font-family: var(--mono); font-weight: 700; font-size: 14px; text-align: right; font-variant-numeric: tabular-nums }
+.bar { height: 6px; border-radius: 3px; background: var(--rule); overflow: hidden }
+.bar i { display: block; height: 100%; background: var(--hl) }
+.dim.na .nm { color: var(--muted) }
+.note { font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--rule); padding-top: 12px; margin: 0 }
+
+#tip { position: fixed; z-index: 20; max-width: min(360px, calc(100vw - 32px)); background: var(--sheet); color: var(--ink); border: 1px solid var(--rule); border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.18); padding: 14px 16px; font-size: 14px; line-height: 1.6; pointer-events: none }
+#tip .item + .item { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--rule) }
+#tip .hd { display: flex; align-items: center; gap: 8px; font-weight: 700 }
+#tip .hd .sw { width: 10px; height: 10px; border-radius: 2px; background: var(--hl); flex: none }
+#tip .hd .sc { margin-left: auto; font-family: var(--mono); font-variant-numeric: tabular-nums }
+#tip .lb { font-family: var(--mono); font-size: 11.5px; letter-spacing: .06em; color: var(--muted); margin-top: 6px }
+#tip .fix { color: var(--ink) }
+.pill { font-family: var(--mono); font-size: 11px; padding: 1px 6px; border-radius: 99px; color: var(--sheet) }
+@media (prefers-reduced-motion: reduce) { mark { transition: none } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="title">
+      <h1>《最后一碗》剧本审读</h1>
+      <div class="meta">60 SEC · 12 SHOTS · 写实剧情 · 新加坡小贩中心</div>
+    </div>
+    <div class="tracks" role="group" aria-label="评审标准" id="tracks"></div>
+  </header>
+
+  <div class="grid">
+    <article class="sheet" id="sheet">
+      <h2>Logline</h2>
+      <p class="logline"><mark data-a="logline">经营四十二年的鱼丸面摊最后一晚，很少回家的孙女冒雨赶来，接过了阿公手里的汤勺。</mark> <span style="font-family:var(--mono);font-size:12.5px;color:var(--muted)"><mark data-a="fmt">16:9 横屏 · 60 秒</mark></span></p>
+
+      <div class="slug">场 1 · 内景 · 小贩中心 · 夜 · 雨</div>
+      <p class="action"><mark data-a="open">大部分摊位已拉下铁闸，只有「陈记鱼丸面」还亮着一盏灯。</mark><mark data-a="notice">摊前贴着一张手写告示：「陈记鱼丸面 1984–2026 谢谢大家四十二年的照顾」。</mark></p>
+      <p class="action"><mark data-a="wipe">陈伯（72）慢慢擦着不锈钢台面，锅里的汤还在冒气。</mark></p>
+      <p class="action"><mark data-a="wen">小雯（28）一身湿透的上班装，从雨里跑进来，在摊前停住，喘气。</mark></p>
+
+      <div class="dlg"><div class="who">陈伯</div><div class="paren">（没抬头）</div><div class="line"><mark data-a="l1">收了。</mark></div></div>
+      <div class="dlg"><div class="who">小雯</div><div class="line"><mark data-a="l2">阿公……我来吃最后一碗。</mark></div></div>
+
+      <p class="action"><mark data-a="smile">陈伯抬头，愣了一下，嘴角慢慢扬起。他转身重新点火。</mark></p>
+      <p class="action">面下锅。<mark data-a="tremble">他抓面的手在发抖。小雯看见了。</mark></p>
+      <p class="action"><mark data-a="take">她走进摊位，从他手里接过汤勺。陈伯没说话，握住她的手，带着她舀汤。</mark></p>
+
+      <div class="dlg"><div class="who">陈伯</div><div class="line"><mark data-a="l3">汤要先下，面才不会糊。</mark></div></div>
+
+      <p class="action"><mark data-a="eat">两人并排坐在红色塑料凳上，一起吃面。</mark></p>
+
+      <div class="slug"><mark data-a="scene2">场 2 · 内景 · 小贩中心 · 日 · 三个月后</mark></div>
+      <p class="action"><mark data-a="sign">阳光明亮，人声热闹。摊位换了新招牌：「陈记鱼丸面 · 第二代」。</mark></p>
+      <p class="action"><mark data-a="queue">小雯在摊位里麻利地煮面，前面排着队。陈伯坐在摊前的桌子上，像个客人一样吃着面，朝她竖起大拇指。</mark></p>
+
+      <p class="card">字幕<br><b><mark data-a="tag">有些味道，不会收摊。</mark></b></p>
+    </article>
+
+    <aside>
+      <div>
+        <div class="score"><span class="n" id="total">0</span><span class="of">/ 100</span></div>
+        <p class="verdict" id="verdict"></p>
+      </div>
+      <div class="legend">
+        <p class="hint">点一个维度只看它的修改点；把鼠标放在高亮文字上看评价，手机上点一下。</p>
+        <div id="dims"></div>
+      </div>
+      <p class="note" id="foot"></p>
+    </aside>
+  </div>
+</div>
+<div id="tip" hidden></div>
+
+<script>
+const TRACKS = {
+  drama: {
+    name: "AI 短剧 / 漫剧",
+    verdict: "节奏和钩子都不是短剧打法，原样投放会在前几秒被划走。",
+    foot: "适用于抖音、快手、红果、ReelShort 等竖屏平台。漫剧另需检查画风统一和不崩脸。",
+    dims: [
+      ["hook", "前 3 秒钩子", 20, 2],
+      ["conflict", "冲突与爽点密度", 20, 3],
+      ["persona", "人设标签", 10, 4],
+      ["emotion", "情绪价值", 15, 5],
+      ["cliff", "集尾钩子", 15, 2],
+      ["vertical", "竖屏视听", 10, 3],
+      ["series", "系列化潜力", 5, 6],
+      ["comply", "合规", 5, 9]
+    ],
+    notes: [
+      ["open", "hook", "开场是雨夜空镜，没有任何冲突，观众 3 秒内就会划走。", "第一镜改成房东把「收回摊位」通知拍在台面上：“明天中午之前搬走！”"],
+      ["wipe", "conflict", "全片没有对抗方，阿公独自擦桌子只有情绪没有冲突。", "加反派：房东和想接手铺位的连锁品牌经理，当众说“这种老摊早该淘汰了”。"],
+      ["wen", "persona", "小雯只是普通上班族，没有标签。", "改成隐藏身份：刚辞职的米其林餐厅主厨，或连锁集团的继承人。"],
+      ["take", "emotion", "接汤勺很温情，但不“爽”。", "明确选“护短逆袭”：小雯当着经理的面接过汤勺，亮出身份替阿公出头。"],
+      ["queue", "cliff", "圆满结局，观众没有理由点下一集。", "停在小雯摘下工作证，对经理说“这个摊，我接了”，切黑。"],
+      ["fmt", "vertical", "16:9 横屏，大全景多，竖屏上人物太小。", "改为 9:16，多用面部大特写，加大字幕和音效重拍点。"],
+      ["scene2", "series", "家族摊位有延展空间，但现在一集就讲完了。", "设定为 60 集：守摊、商战、寻找失传配方、美食比赛。"],
+      ["l1", "comply", "无合规风险。", "保持现状。"]
+    ]
+  },
+  commercial: {
+    name: "商业电影",
+    verdict: "情感底子好，缺阻碍和代价。最适合改成品牌温情短片。",
+    foot: "适用于院线、流媒体和品牌短片。品牌方向可考虑调味品、银行、航空。",
+    dims: [
+      ["logline", "高概念 Logline", 15, 5],
+      ["genre", "类型满足", 15, 7],
+      ["structure", "结构", 15, 5],
+      ["arc", "人物欲望与弧光", 15, 5],
+      ["payoff", "情感回报", 15, 7],
+      ["visual", "视听制作水准", 10, 7],
+      ["market", "市场与受众", 10, 7],
+      ["ext", "延展性", 5, 6]
+    ],
+    notes: [
+      ["logline", "logline", "“老手艺传承”题材常见，一句话没有卖点。", "加一个钩子：阿公失去了味觉，四十年的汤只能靠孙女的舌头来调。"],
+      ["tremble", "genre", "泪点有，但来得晚、来得轻。", "把手抖的伏笔提前到擦桌子那一镜，让观众比小雯更早发现。"],
+      ["take", "structure", "小雯一来就顺利接手，没有阻碍。", "加一次失败：她第一碗汤做砸了，阿公默默倒掉，她再来一次。"],
+      ["wen", "arc", "小雯想要什么、要付出什么，都不清楚。", "给她代价：手机上是明早飞伦敦的登机牌，接摊位就要放弃 offer。"],
+      ["tag", "payoff", "结尾温暖但可预期，金句字幕替观众把情绪说完了。", "结尾改成阿公尝汤后只说一句“咸了”，然后笑着再喝一口。"],
+      ["take", "visual", "雨夜暖灯有画面感，但还缺一个能做海报的镜头。", "设计海报镜头：一老一少的手同握一把汤勺，蒸汽中逆光。"],
+      ["sign", "market", "本地情怀和美食受众清楚。", "天然适合品牌片：调味品、银行（传承与财富）、航空（回家）。"],
+      ["notice", "ext", "可以扩展，但现在没有埋长线。", "长片线索：摊位面临拆迁和申遗之间的拉扯。"]
+    ]
+  },
+  festival: {
+    name: "电影节",
+    verdict: "文化具体性是亮点，但结尾太圆满、把主题说破了，削弱了作者感。",
+    foot: "投递前核对各电影节对 AI 作品的规则、首映要求和片长上限，以当届官网为准。",
+    dims: [
+      ["voice", "作者视角与原创性", 20, 5],
+      ["theme", "主题深度与开放性", 15, 4],
+      ["lang", "电影语言", 20, 6],
+      ["culture", "文化具体性", 10, 8],
+      ["restraint", "克制与留白", 10, 5],
+      ["acting", "表演与真实感", 10, 6],
+      ["form", "形式创新", 10, 4],
+      ["finish", "完成度", 5, 7]
+    ],
+    notes: [
+      ["wen", "voice", "“老手艺传承”是电影节常见题材的常见讲法。", "换角度：小雯其实是来劝阿公别再做了，片子讲的是她的犹豫。"],
+      ["scene2", "theme", "「三个月后」直接给出了答案。", "删掉整个第二场，停在两人吃面，或停在小雯一个人在熄灯的摊位里尝汤。"],
+      ["tag", "theme", "金句字幕把主题说破。", "删掉结尾字幕，让画面自己收尾。"],
+      ["sign", "theme", "“第二代”招牌是对结局的二次解释。", "随第二场一起删除。"],
+      ["l2", "lang", "这句台词替画面做了解释。", "删掉，改成小雯直接坐下，阿公看她一眼就开火。全片只保留“汤要先下”一句台词。"],
+      ["l1", "culture", "新加坡小贩文化是强项（2020 年已列入联合国非遗）。", "对白改用福建话“收啊”，加入熟客的“老样子”和碗底店号等真实细节。"],
+      ["tremble", "restraint", "眼眶泛红特写加渐强配乐偏煽情。", "改成小雯看到后转开视线；配乐只留雨声和汤锅声，片尾才进一个钢琴音。"],
+      ["smile", "acting", "需要细腻的正脸表演，AI 角色容易显得僵。", "改用侧脸、背影或手部动作来传达情绪。"],
+      ["open", "form", "传统叙事，形式上没有新意。", "可选：全片固定机位，从摊位内部看出去，像阿公四十年看到的视角。"],
+      ["fmt", "finish", "方案完整。", "注意片长、字幕语种和电影节的 AI 规则。"]
+    ]
+  },
+  ai: {
+    name: "AI 技术风险",
+    verdict: "四处高风险镜头，生成时要多出几个版本或预留后期补救。",
+    foot: "风险等级是生成前的预判，不计入三套赛道的总分。",
+    dims: [
+      ["text", "画面文字", 0, 3],
+      ["hands", "手部特写", 0, 4],
+      ["lip", "口型", 0, 4],
+      ["consist", "角色一致性", 0, 5]
+    ],
+    notes: [
+      ["notice", "text", "告示上的中文很可能生成错字。", "后期在剪辑软件里叠加真实文字。"],
+      ["sign", "text", "新招牌同样有文字渲染风险。", "后期叠字，或让招牌在画面里虚焦。"],
+      ["tremble", "hands", "手部大特写容易出现畸形手指。", "至少多生成 5 个版本挑选，或改成手的剪影。"],
+      ["l2", "lip", "正脸对白最难对上口型。", "改为越肩背影说话，或改成画外音。"],
+      ["queue", "consist", "小雯夜戏湿发上班装和日戏围裙头巾差别大，容易变脸。", "两套造型分别生成定妆图，每镜都上传对应参考图。"]
+    ]
+  }
+};
+const COLORS = ["--c1","--c2","--c3","--c4","--c5","--c6","--c7","--c8"];
+
+let current = "festival", solo = null;
+try { const s = localStorage.getItem("lb-track"); if (s && TRACKS[s]) current = s; } catch (e) {}
+if (TRACKS[location.hash.slice(1)]) current = location.hash.slice(1);
+
+const total = t => t.dims.reduce((a, d) => a + d[2] * d[3], 0) / 10;
+const colorOf = (t, key) => `var(${COLORS[t.dims.findIndex(d => d[0] === key) % COLORS.length]})`;
+const scoreColor = s => s >= 8 ? "var(--good)" : s >= 6 ? "var(--warn)" : "var(--bad)";
+
+function renderTracks() {
+  const el = document.getElementById("tracks"); el.innerHTML = "";
+  for (const [k, t] of Object.entries(TRACKS)) {
+    const b = document.createElement("button");
+    b.type = "button"; b.id = "track-" + k; b.setAttribute("aria-pressed", k === current);
+    b.innerHTML = `<span>${t.name}</span>` + (k === "ai" ? "" : `<span class="s">${Math.round(total(t))}</span>`);
+    b.onclick = () => { current = k; solo = null; try { localStorage.setItem("lb-track", k) } catch (e) {} render(); };
+    el.appendChild(b);
+  }
+}
+
+function render() {
+  renderTracks();
+  const t = TRACKS[current];
+  const isAi = current === "ai";
+  document.getElementById("total").textContent = isAi ? t.notes.length : Math.round(total(t));
+  document.querySelector(".score .of").textContent = isAi ? "处风险" : "/ 100";
+  document.getElementById("verdict").textContent = t.verdict;
+  document.getElementById("foot").textContent = t.foot;
+
+  const dims = document.getElementById("dims"); dims.innerHTML = "";
+  t.dims.forEach(([key, name, w, s]) => {
+    const has = t.notes.some(n => n[1] === key);
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "dim" + (has ? "" : " na"); b.id = "dim-" + key;
+    b.style.setProperty("--hl", colorOf(t, key));
+    b.setAttribute("aria-pressed", solo === key);
+    const label = isAi ? `风险 ${10 - s}/10` : `${s}`;
+    b.innerHTML = `<span class="sw"></span><span class="nm">${name}${w ? `<small>×${w}</small>` : ""}</span>`
+      + `<span class="sc" style="color:${isAi ? "var(--bad)" : scoreColor(s)}">${isAi ? 10 - s : s}</span>`
+      + `<span class="bar"><i style="width:${(isAi ? 10 - s : s) * 10}%"></i></span>`;
+    b.title = label;
+    b.onclick = () => { solo = solo === key ? null : key; render(); };
+    dims.appendChild(b);
+  });
+
+  document.querySelectorAll("mark[data-a]").forEach(m => {
+    const ns = t.notes.filter(n => n[0] === m.dataset.a);
+    m.className = ""; m.removeAttribute("tabindex"); m.style.removeProperty("--hl"); m.style.removeProperty("--hl2");
+    if (!ns.length) return;
+    m.classList.add("on"); m.tabIndex = 0;
+    m.style.setProperty("--hl", colorOf(t, ns[0][1]));
+    if (ns.length > 1) { m.classList.add("multi"); m.style.setProperty("--hl2", colorOf(t, ns[1][1])); }
+    if (solo) m.classList.add(ns.some(n => n[1] === solo) ? "focus" : "fade");
+  });
+}
+
+const tip = document.getElementById("tip");
+function showTip(m) {
+  const t = TRACKS[current];
+  const ns = t.notes.filter(n => n[0] === m.dataset.a);
+  if (!ns.length) return;
+  tip.innerHTML = ns.map(([, key, issue, fix]) => {
+    const d = t.dims.find(x => x[0] === key);
+    const sc = current === "ai" ? `<span class="pill" style="background:var(--bad)">风险 ${10 - d[3]}</span>` : `<span class="pill" style="background:${scoreColor(d[3])}">${d[3]} 分</span>`;
+    return `<div class="item" style="--hl:${colorOf(t, key)}"><div class="hd"><span class="sw"></span>${d[1]}<span class="sc">${sc}</span></div>`
+      + `<div class="lb">问题</div><div>${issue}</div><div class="lb">怎么改</div><div class="fix">${fix}</div></div>`;
+  }).join("");
+  tip.hidden = false;
+  const r = m.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
+  let x = Math.min(Math.max(16, r.left), window.innerWidth - tw - 16);
+  let y = r.bottom + 10;
+  if (y + th > window.innerHeight - 16) y = Math.max(16, r.top - th - 10);
+  tip.style.left = x + "px"; tip.style.top = y + "px";
+}
+const hide = () => { tip.hidden = true; };
+const sheet = document.getElementById("sheet");
+sheet.addEventListener("mouseover", e => { const m = e.target.closest("mark.on"); if (m) showTip(m); });
+sheet.addEventListener("mouseout", e => { const m = e.target.closest("mark.on"); if (m && !m.contains(e.relatedTarget)) hide(); });
+sheet.addEventListener("focusin", e => { const m = e.target.closest("mark.on"); if (m) showTip(m); });
+sheet.addEventListener("focusout", hide);
+sheet.addEventListener("click", e => { const m = e.target.closest("mark.on"); if (m) { e.stopPropagation(); showTip(m); } });
+document.addEventListener("click", e => { if (!e.target.closest("mark.on")) hide(); });
+window.addEventListener("scroll", hide, { passive: true });
+document.addEventListener("keydown", e => { if (e.key === "Escape") hide(); });
+
+render();
+</script>

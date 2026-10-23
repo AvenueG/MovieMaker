@@ -1,0 +1,1283 @@
+<title>短剧创作台</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+SC:wght@400;500;700;900&family=Noto+Serif+SC:wght@600;900&display=swap">
+<style>
+/* Layout: a production board. Step rail on the left (concept → storyboard), the active stage's desk on the right */
+:root {
+  --bg: #f3f3f0; --panel: #ffffff; --ink: #1c1d21; --muted: #646872; --rule: #dedfdb; --field: #fafaf8;
+  --accent: #2d4bd6; --accent-ink: #ffffff; --pass: #2f8a4c; --fail: #c23b32; --warn: #b7791f;
+  --hook: #c23b32; --shuang: #d9822b; --sweet: #d6488f; --twist: #6f4bd8; --cliff: #1f6fb2; --other: #7b8494;
+  --act: #c9ccd2; --dlg: #8d94a1;
+  --display: "Noto Serif SC", "Songti SC", serif;
+  --sans: "Noto Sans SC", "PingFang SC", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111215; --panel: #1a1b20; --ink: #e8e9ec; --muted: #9a9ea8; --rule: #2d2f36; --field: #15161a;
+  --accent: #8b9cff; --accent-ink: #10121a; --pass: #5cc27c; --fail: #ff7a70; --warn: #e8ae52;
+  --hook: #ff7a70; --shuang: #f2a65a; --sweet: #f27ab8; --twist: #a68cff; --cliff: #64a8e8; --other: #8a93a3;
+  --act: #3a3d46; --dlg: #676d7a; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #111215; --panel: #1a1b20; --ink: #e8e9ec; --muted: #9a9ea8; --rule: #2d2f36; --field: #15161a;
+  --accent: #8b9cff; --accent-ink: #10121a; --pass: #5cc27c; --fail: #ff7a70; --warn: #e8ae52;
+  --hook: #ff7a70; --shuang: #f2a65a; --sweet: #f27ab8; --twist: #a68cff; --cliff: #64a8e8; --other: #8a93a3;
+  --act: #3a3d46; --dlg: #676d7a; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 14.5px; line-height: 1.65;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 56px }
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 18px }
+header.top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 10px 24px }
+h1 { font-family: var(--display); font-weight: 900; font-size: 26px; margin: 0; letter-spacing: .03em }
+.sub { color: var(--muted); margin: 2px 0 0; font-size: 13.5px }
+.notice { padding: 10px 14px; border-radius: 8px; border: 1px solid var(--rule); background: var(--panel); font-size: 13.5px }
+.notice.warn { border-color: color-mix(in srgb, var(--warn) 50%, var(--rule)); background: color-mix(in srgb, var(--warn) 10%, var(--panel)) }
+
+.layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 18px; align-items: start }
+@media (max-width: 860px) { .layout { grid-template-columns: minmax(0, 1fr) } }
+nav.rail { display: grid; gap: 6px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px) }
+@media (max-width: 860px) { nav.rail { position: static; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px } nav.rail .st-d { display: none } }
+.st { font: inherit; text-align: left; color: var(--ink); background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 10px 12px; cursor: pointer; display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 2px 8px; align-items: center }
+.st:hover:not([disabled]) { border-color: var(--muted) }
+.st[disabled] { cursor: not-allowed; opacity: .55 }
+.st[aria-current="step"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) }
+.st-n { grid-row: span 2; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-family: var(--mono); font-size: 12.5px; font-weight: 600; background: var(--field); border: 1px solid var(--rule) }
+.st.done .st-n { background: var(--pass); border-color: var(--pass); color: var(--panel) }
+.st.stale .st-n { background: var(--warn); border-color: var(--warn); color: var(--panel) }
+.st-t { font-weight: 700; font-size: 14px; line-height: 1.3 }
+.st-d { font-size: 12px; color: var(--muted); line-height: 1.3 }
+@media (max-width: 860px) { .st { grid-template-columns: minmax(0, 1fr); justify-items: center; text-align: center; padding: 8px 4px } .st-n { grid-row: auto } .st-t { font-size: 12.5px } }
+.rail-foot { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px }
+@media (max-width: 860px) { .rail-foot { grid-column: 1 / -1 } }
+
+.desk { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; min-width: 0 }
+.card { background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; padding: 18px; display: grid; gap: 14px; min-width: 0 }
+.desk h2 { font-family: var(--display); font-size: 21px; margin: 0; line-height: 1.3 }
+.lead { color: var(--muted); margin: -6px 0 0; font-size: 13.5px; max-width: 70ch }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
+.row.between { justify-content: space-between }
+.fields { display: grid; grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)); gap: 10px }
+@media (max-width: 700px) { .fields { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) } .fields .wide { grid-column: 1 / -1 } }
+label.f { display: grid; gap: 4px; font-size: 12.5px; color: var(--muted); min-width: 0 }
+input[type=text], input[type=number], select, textarea { font: inherit; color: var(--ink); background: var(--field); border: 1px solid var(--rule); border-radius: 8px; padding: 8px 10px; width: 100%; min-width: 0 }
+textarea { font-family: var(--sans); font-size: 14px; line-height: 1.8; resize: vertical; white-space: pre-wrap; overflow-wrap: anywhere; overflow: auto; tab-size: 2 }
+textarea.csv { font-family: var(--mono); font-size: 12.5px; line-height: 1.7 }
+textarea.idea { font-family: var(--sans); font-size: 16px; white-space: pre-wrap; min-height: 96px }
+textarea.doc { min-height: 420px }
+textarea.doc.short { min-height: 260px }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px }
+
+.btn { font: inherit; font-size: 13.5px; font-weight: 500; color: var(--ink); background: var(--field); border: 1px solid var(--rule); border-radius: 8px; padding: 7px 14px; cursor: pointer; white-space: nowrap }
+.btn:hover:not([disabled]) { border-color: var(--muted) }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700 }
+.btn.ok { background: var(--pass); border-color: var(--pass); color: var(--panel); font-weight: 700 }
+.btn[disabled] { opacity: .5; cursor: not-allowed }
+.btn.small { font-size: 12.5px; padding: 4px 10px }
+.status { font-size: 13px; color: var(--muted); min-height: 1.4em }
+.status.err { color: var(--fail) }
+.status.busy::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-right: 8px; animation: pulse 1s infinite ease-in-out }
+@keyframes pulse { 50% { opacity: .2 } }
+.stale-bar { padding: 8px 12px; border-radius: 8px; background: color-mix(in srgb, var(--warn) 14%, var(--panel)); color: var(--ink); font-size: 13px; border: 1px solid color-mix(in srgb, var(--warn) 40%, var(--rule)) }
+
+.concepts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px }
+.cc { border: 1px solid var(--rule); border-radius: 10px; padding: 14px; display: grid; gap: 8px; background: var(--field); align-content: start }
+.cc.picked { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) }
+.cc.sel { background: color-mix(in srgb, var(--accent) 6%, var(--field)) }
+.cc details summary { font-size: 12px; color: var(--muted); cursor: pointer }
+.cc details[open] summary { margin-bottom: 6px }
+.from { font-size: 12px; color: var(--accent) }
+.pick-sel { display: inline-flex; gap: 4px; align-items: center; font-size: 12.5px; margin-right: auto; cursor: pointer }
+h4.sec { margin: 0; font-size: 12.5px; letter-spacing: .06em; color: var(--muted) }
+.cnt { font-family: var(--sans); font-size: 12.5px; font-weight: 400; color: var(--muted); margin-left: 6px }
+label.f.inline { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px }
+label.f.inline select { width: auto; padding: 5px 8px }
+.taste { padding: 10px 14px; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--rule)); background: color-mix(in srgb, var(--accent) 6%, var(--panel)); display: grid; gap: 4px; font-size: 13.5px }
+.taste p { margin: 0 } .taste b { color: var(--muted); margin-right: 4px }
+.merge { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px }
+@media (max-width: 560px) { .merge { grid-template-columns: minmax(0, 1fr) } }
+.cc h3 { font-family: var(--display); font-size: 18px; margin: 0; line-height: 1.3 }
+.cc .tags { font-size: 12px; color: var(--muted) }
+.cc p { margin: 0; font-size: 13.5px }
+.cc .k { font-size: 11.5px; color: var(--muted); letter-spacing: .04em }
+.score { font-family: var(--mono); font-weight: 600; font-size: 22px; font-variant-numeric: tabular-nums }
+.bars { display: grid; grid-template-columns: auto minmax(0, 1fr) 20px; gap: 2px 8px; font-size: 12px; align-items: center }
+.bars i { height: 5px; border-radius: 3px; background: var(--rule); overflow: hidden; display: block }
+.bars i b { display: block; height: 100%; background: var(--accent) }
+.bars span:nth-child(3n) { font-family: var(--mono); text-align: right; color: var(--muted) }
+.weak { font-size: 12.5px; color: var(--warn) }
+
+.two { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 14px; align-items: start }
+@media (max-width: 1000px) { .two { grid-template-columns: minmax(0, 1fr) } }
+.panel { border: 1px solid var(--rule); border-radius: 10px; padding: 14px; display: grid; gap: 10px; background: var(--field); min-width: 0 }
+.panel h4 { margin: 0; font-size: 12.5px; letter-spacing: .06em; color: var(--muted); font-weight: 700 }
+.verdict { padding: 8px 10px; border-radius: 8px; font-weight: 700; font-size: 13.5px }
+.verdict.ok { background: color-mix(in srgb, var(--pass) 14%, transparent); color: var(--pass) }
+.verdict.bad { background: color-mix(in srgb, var(--fail) 12%, transparent); color: var(--fail) }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px }
+.stats div { display: grid }
+.stats .k { font-size: 11.5px; color: var(--muted) }
+.stats .v { font-family: var(--mono); font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums }
+.stats .v small { font-size: 12px; color: var(--muted); font-weight: 400 }
+.timeline { display: grid; gap: 3px }
+.tl-tags, .tl-gap { position: relative; height: 14px }
+.tl-bar { height: 18px; display: flex; border-radius: 4px; overflow: hidden; background: var(--panel) }
+.tl-bar span { height: 100%; border-right: 1px solid var(--field); cursor: pointer; min-width: 1px }
+.tl-bar span.act { background: var(--act) } .tl-bar span.dlg { background: var(--dlg) } .tl-bar span.bad { background: var(--fail) }
+.tl-tags i { position: absolute; top: 1px; width: 11px; height: 11px; margin-left: -5.5px; border-radius: 50%; border: 2px solid var(--field); cursor: pointer }
+.tl-gap b { position: absolute; top: 3px; height: 8px; border-radius: 4px; background: repeating-linear-gradient(45deg, var(--fail) 0 4px, transparent 4px 8px) }
+.tl-ticks { position: relative; height: 13px; font-family: var(--mono); font-size: 10.5px; color: var(--muted) }
+.tl-ticks span { position: absolute; transform: translateX(-50%) }
+.tl-ticks span:first-child { transform: none }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11.5px; color: var(--muted) }
+.legend span { display: inline-flex; align-items: center; gap: 4px }
+.legend i { width: 9px; height: 9px; border-radius: 50% }
+.gates { list-style: none; margin: 0; padding: 0; display: grid }
+.gates li { border-top: 1px solid var(--rule); padding: 6px 0; font-size: 13px }
+.gates li:first-child { border-top: 0 }
+.g-hd { display: flex; gap: 8px; align-items: baseline }
+.g-ic { font-family: var(--mono); font-weight: 600; width: 14px; flex: none }
+.g-ic.ok { color: var(--pass) } .g-ic.bad { color: var(--fail) } .g-ic.skip { color: var(--muted) }
+.g-nm { flex: 1; min-width: 0 }
+.g-list { list-style: none; margin: 4px 0 0 22px; padding: 0; display: grid; gap: 2px }
+.g-list button { font: inherit; font-size: 12.5px; text-align: left; color: var(--ink); background: transparent; border: 0; padding: 1px 6px; margin-left: -6px; border-radius: 4px; cursor: pointer }
+.g-list button:hover { background: var(--panel) }
+.g-list button::before { content: "→ "; color: var(--fail) }
+.revise { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px }
+@media (max-width: 560px) { .revise { grid-template-columns: minmax(0, 1fr) } }
+.hint { font-size: 12.5px; color: var(--muted); margin: 0 }
+.hint code { font-family: var(--mono); font-size: 12px; background: var(--panel); border: 1px solid var(--rule); border-radius: 4px; padding: 0 4px }
+/* tags step */
+.tag-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px }
+fieldset.tg { border: 1px solid var(--rule); border-radius: 10px; padding: 10px 12px 12px; margin: 0; background: var(--field); min-width: 0 }
+fieldset.tg legend { font-size: 12.5px; font-weight: 700; color: var(--muted); letter-spacing: .04em; padding: 0 4px }
+.chips { display: flex; flex-wrap: wrap; gap: 6px }
+.chip { font: inherit; font-size: 13px; color: var(--ink); background: var(--panel); border: 1px solid var(--rule); border-radius: 999px; padding: 4px 11px; cursor: pointer; line-height: 1.4 }
+.chip:hover { border-color: var(--muted) }
+.chip.want { background: color-mix(in srgb, var(--pass) 16%, var(--panel)); border-color: var(--pass); color: var(--pass); font-weight: 600 }
+.chip.avoid { background: color-mix(in srgb, var(--fail) 10%, var(--panel)); border-color: color-mix(in srgb, var(--fail) 60%, var(--rule)); color: var(--fail); text-decoration: line-through }
+.why { margin: 0; font-size: 13px; color: var(--muted); max-width: 70ch }
+.picked-line { display: grid; gap: 4px; font-size: 13.5px; padding: 10px 12px; border-radius: 8px; background: var(--field); border: 1px solid var(--rule) }
+.picked-line b { display: inline-block; min-width: 3em; color: var(--muted); font-weight: 700 }
+/* reading view */
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden }
+.seg .btn { border: 0; border-radius: 0 }
+.seg .btn[aria-pressed="true"] { background: var(--ink); color: var(--panel) }
+.reader { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 16px 20px; max-height: 70vh; overflow: auto; font-size: 15px; line-height: 1.85; overflow-wrap: anywhere }
+.reader > * { max-width: 68ch }
+.reader p { margin: 0 0 6px }
+.reader h3 { font-family: var(--display); font-size: 20px; margin: 0 0 10px; line-height: 1.35 }
+.reader h4 { font-size: 12.5px; letter-spacing: .08em; color: var(--muted); margin: 18px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--rule) }
+.reader h4:first-child { margin-top: 0 }
+.kv { display: grid; grid-template-columns: 5.5em minmax(0, 1fr); gap: 10px; padding: 5px 0; border-top: 1px dashed var(--rule) }
+.kv:first-of-type { border-top: 0 }
+.kv > span { font-size: 12.5px; color: var(--muted); font-weight: 700; padding-top: 3px }
+.kv p { margin: 0 }
+.ch { border: 1px solid var(--rule); border-radius: 10px; padding: 10px 14px; margin: 0 0 10px; background: var(--field) }
+.ch-hd { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; margin-bottom: 4px }
+.ch-hd b { font-family: var(--display); font-size: 17px }
+.ch-hd span { font-size: 12.5px; color: var(--muted); font-family: var(--mono) }
+.ch-hd em { font-style: normal; font-size: 12.5px; color: var(--accent) }
+.ch p { font-size: 14px; margin: 2px 0 }
+.ch p.look { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-top: 6px }
+.beat { display: grid; grid-template-columns: 3.6em auto minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 4px 0 }
+.beat p { margin: 0 }
+.tc { font-family: var(--mono); font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums }
+.tchip { display: inline-block; font-size: 11.5px; font-weight: 700; line-height: 1.5; padding: 0 7px; border-radius: 999px; color: var(--c); border: 1px solid var(--c); background: color-mix(in srgb, var(--c) 10%, transparent); white-space: nowrap; vertical-align: 1px }
+.slug { font-weight: 700; font-size: 13.5px; letter-spacing: .03em; margin: 16px 0 8px; padding: 4px 10px; background: var(--field); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0 }
+.act, .dl { display: grid; grid-template-columns: 2.2em minmax(0, 1fr); gap: 8px; padding: 3px 0 }
+.act p { color: var(--muted); font-style: italic }
+.act .tchip { font-style: normal }
+.n { font-family: var(--mono); font-size: 11.5px; color: var(--muted); text-align: right; padding-top: 4px }
+.dl .who { font-weight: 700; font-size: 13.5px }
+.dl .who span { font-weight: 400; color: var(--muted); font-size: 12.5px }
+.dl p { padding-left: 1em }
+.note { color: var(--muted); font-size: 13px }
+.empty { color: var(--muted) }
+.shots { display: grid; gap: 10px }
+.reader .shots { max-width: none }
+.shot { border: 1px solid var(--rule); border-radius: 10px; padding: 10px 14px; background: var(--field) }
+.shot-hd { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; margin-bottom: 4px; font-size: 13px }
+.shot-hd b { font-size: 14.5px }
+.shot-hd span { color: var(--muted) }
+.shot .kv p { font-size: 14px }
+.meta { font-size: 12px; color: var(--muted); margin: 6px 0 0 !important }
+.epbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 8px; background: var(--field); border: 1px solid var(--rule) }
+.epbar select { width: auto; max-width: 100%; min-width: 0; flex: 0 1 auto }
+.eprow { font-size: 12.5px; color: var(--muted); flex: 1 1 240px; min-width: 0 }
+.epgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 4px }
+.epc { font: inherit; font-family: var(--mono); font-size: 12px; height: 30px; border-radius: 6px; cursor: pointer; color: var(--ink); background: var(--panel); border: 1px solid var(--rule); border-bottom: 3px solid var(--c, var(--rule)) }
+.epc:hover { border-color: var(--muted) }
+.epc.mid { background: color-mix(in srgb, var(--pass) 12%, var(--panel)) }
+.epc.done { background: var(--pass); color: var(--panel); border-color: var(--pass); border-bottom-color: var(--c, var(--pass)) }
+.epc.miss { opacity: .45; border-style: dashed }
+.beat.ep { grid-template-columns: 3.6em minmax(0, 1fr) }
+.beat.ep b { font-size: 14.5px }
+.reader.season .kv { grid-template-columns: 8.5em minmax(0, 1fr) }
+.hk { font-size: 13px; color: var(--muted) }
+.auto { border-color: color-mix(in srgb, var(--accent) 45%, var(--rule)) }
+.aplog { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; font-size: 13px; max-height: 260px; overflow: auto }
+.aplog li { display: grid; grid-template-columns: 3.4em minmax(0, 1fr); gap: 6px }
+.aplog li span { font-family: var(--mono); font-size: 11.5px; color: var(--muted); padding-top: 2px }
+.aplog li.ok { color: var(--pass) } .aplog li.warn { color: var(--warn) } .aplog li.err { color: var(--fail) } .aplog li.pause { color: var(--accent); font-weight: 700 }
+.review { border-top: 1px solid var(--rule); padding-top: 10px; display: grid; gap: 8px }
+.rv-total { font-family: var(--mono); font-size: 24px; font-weight: 700 }
+.rv-total small { font-size: 12px; color: var(--muted); font-weight: 400 }
+.rv-total.ok { color: var(--pass) } .rv-total.bad { color: var(--fail) }
+.fixes { margin: 0; padding-left: 1.2em; font-size: 13px; display: grid; gap: 4px }
+#auto:empty { display: none }
+.two > div { grid-template-columns: minmax(0, 1fr) }
+.hint { overflow-wrap: anywhere }
+@media (prefers-reduced-motion: reduce) { .status.busy::before { animation: none } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>短剧创作台</h1>
+      <p class="sub">从一句话开始，概念、大纲、剧本、分镜一步一步写。每一步你确认了才进入下一步，只把上一步的结果交给 AI，省时也省额度。</p>
+    </div>
+  </header>
+  <div class="notice warn" id="noSample" hidden>这个页面需要在 Claude 里打开，AI 才能帮你写。现在你仍然可以手动编辑各步内容，质量检查照常工作。</div>
+
+  <div class="layout">
+    <nav class="rail" aria-label="创作步骤" id="rail"></nav>
+    <main class="desk"><div id="auto"></div><div class="desk" id="desk"></div></main>
+  </div>
+</div>
+
+<script>
+// ---------- constants & rules (same thresholds as tools/check.py) ----------
+const CPS = 4.5, ACT_SEC = 2.5, LINE_MAX = 35, GAP_MAX = 20, TOL = 0.15, CUT_MIN = 2, CUT_MAX = 8, PEOPLE_MAX = 3;
+const SIZES = ["大远景","远景","大全景","全景","中全景","中景","中近景","近景","特写","大特写"];
+const TAGS = { "钩子": "--hook", "爽点": "--shuang", "打脸": "--shuang", "甜点": "--sweet", "心动": "--sweet", "反转": "--twist", "悬念": "--cliff" };
+const STEPS = [
+  { k: "idea", t: "一句话", d: "写下你的点子" },
+  { k: "tags", t: "标签", d: "勾选要的和不要的" },
+  { k: "concept", t: "概念", d: "抽卡、保留、合并" },
+  { k: "season", t: "整季", d: "集数、人设、分集表" },
+  { k: "outline", t: "大纲", d: "角色、节拍、拍板" },
+  { k: "script", t: "剧本", d: "场次、动作、台词" },
+  { k: "shots", t: "分镜", d: "镜头、首帧、视频提示词" }
+];
+const REVIEW = [["前3秒钩子", 20], ["冲突与爽点密度", 20], ["人设标签", 10], ["情绪价值", 15], ["集尾钩子", 15], ["竖屏视听", 10], ["系列化潜力", 5], ["合规", 5]];
+const SCORE_KEYS = ["钩子强度","反差","新鲜度","情绪价值","人设标签","系列化","AI可制作性","合规"];
+// Modular premise (MoPS): world → persona → relationship → engine → payoff → ending; each group is one module
+const TAG_GROUPS = [
+  { k: "world", t: "世界 / 题材", tags: ["都市","豪门","校园","精英学院","职场","娱乐圈","古风宫廷","仙侠玄幻","民国","年代","末世","近未来科幻","星际","异能","哨兵向导","ABO","悬疑","公检法","非遗","地域风情"] },
+  { k: "her", t: "女主人设", tags: ["隐藏大佬","落魄千金","真假千金","扮猪吃老虎","重生复仇","穿书","马甲多","清冷学霸","软萌外表狠角色","被判废柴","单亲妈妈","替嫁","小人物逆袭"] },
+  { k: "him", t: "男主人设", tags: ["霸总","疯批","病娇","高冷禁欲","温柔腹黑","忠犬","年下奶狗","残疾大佬","反派上位","堕落天才","克制守护","多男主"] },
+  { k: "rel", t: "关系 / 情感线", tags: ["先婚后爱","契约婚姻","追妻火葬场","破镜重圆","双向救赎","强制爱","青梅竹马","上下级","替身","暗恋成真","宿敌变恋人","修罗场","命定之人","年龄差"] },
+  { k: "engine", t: "金手指 / 设定钩子", tags: ["重生","系统","读心术","预知","精神契约","时间循环","身份互换","失忆","血脉觉醒","万人迷体质","唯一例外","能力代价"] },
+  { k: "payoff", t: "爽点 / 情绪", tags: ["打脸","逆袭","护短","身份揭露","复仇","甜宠撒糖","先虐后甜","团宠","萌宝","反转再反转","掉马","双强对决"] },
+  { k: "end", t: "调性 / 结局", tags: ["HE 甜","BE 虐","开放结局","轻喜剧","黑色幽默","燃","治愈","细思极恐"] }
+];
+const isSweet = () => /甜|宠|恋|爱/.test(S.genre);
+const tagStr = () => {
+  const want = [], avoid = [];
+  TAG_GROUPS.forEach(g => Object.entries(S.tags[g.k] || {}).forEach(([t, v]) => (v > 0 ? want : avoid).push(`${g.t}：${t}`)));
+  (S.custom || "").split(/[,，、\n]/).map(x => x.trim()).filter(Boolean).forEach(t => want.push(`自定义：${t}`));
+  return { want, avoid };
+};
+
+// ---------- state ----------
+const KEY = "studio-v1";
+const blank = () => ({ v: 3, step: 0, nEps: 20, ep: 1, eps: {}, season: "", reviews: {}, autoOpen: false, auto: { stopAt: "key", upTo: 1, pass: 75, seasonSeen: "" }, idea: "", genre: "AI 甜宠短剧", secs: 60, aspect: "9:16", tags: {}, custom: "", tagWhy: "", concepts: [], seen: [], picked: -1, keep: [], toss: [], sel: [], taste: null, mode: "mix", mergeNote: "",
+  concept: "", outline: "", script: "", shots: "", ok: {}, base: {}, view: {} });
+let S = blank();
+try { const j = JSON.parse(localStorage.getItem(KEY) || "null"); if (j) { if (!j.v) { j.step = j.step > 0 ? j.step + 1 : 0; j.ok = Object.assign({}, j.ok, { tags: !!(j.ok || {}).idea }); j.v = 2; }
+    if (j.v === 2) { j.step = j.step >= 3 ? j.step + 1 : j.step; j.ok = Object.assign({}, j.ok, { season: !!(j.ok || {}).concept }); j.nEps = 1; j.v = 3; }
+    S = Object.assign(blank(), j); } } catch (e) {}
+let uid = Date.now(); const newId = () => "c" + (uid++).toString(36);
+S.concepts.forEach(c => c.id = c.id || newId()); S.keep.forEach(c => c.id = c.id || newId());
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+
+const hash = s => { let h = 5381; for (let i = 0; i < s.length; i++) h = (h * 33 + s.charCodeAt(i)) | 0; return String(h); };
+const upstreamOf = k => ({ concept: S.idea + S.genre + S.secs + JSON.stringify(tagStr()), season: S.concept + "|" + S.nEps, outline: S.season ? S.season + "|E" + S.ep : S.concept, script: S.outline, shots: S.script })[k] || "";
+const hasContent = k => !!({ idea: S.idea, tags: 1, concept: S.concept, season: S.season, outline: S.outline, script: S.script, shots: S.shots })[k];
+const isStale = k => k !== "idea" && k !== "tags" && hasContent(k) && S.base[k] && S.base[k] !== hash(upstreamOf(k)) + "|" + S.secs;
+const markBase = k => { S.base[k] = hash(upstreamOf(k)) + "|" + S.secs; };
+const unlocked = i => i === 0 || STEPS.slice(0, i).every(s => S.ok[s.k]);
+
+// ---------- episodes: outline / script / shots live at the top level for the current episode; the others wait in S.eps ----------
+const EPK = ["outline", "script", "shots"];
+const pad = n => String(n).padStart(2, "0");
+const snapEp = () => ({ ...Object.fromEntries(EPK.map(k => [k, S[k]])), ok: Object.fromEntries(EPK.map(k => [k, !!S.ok[k]])), base: Object.fromEntries(EPK.map(k => [k, S.base[k]])), view: Object.fromEntries(EPK.map(k => [k, S.view[k]])) });
+const epData = n => n === S.ep ? snapEp() : S.eps[n];
+function loadEp(n) {
+  S.eps[S.ep] = snapEp(); const e = S.eps[n] || { ok: {}, base: {}, view: {} };
+  EPK.forEach(k => { S[k] = e[k] || ""; S.ok[k] = !!e.ok?.[k]; if (e.base?.[k]) S.base[k] = e.base[k]; else delete S.base[k]; if (e.view?.[k]) S.view[k] = e.view[k]; else delete S.view[k]; });
+  S.ep = n;
+}
+const secOf = (text, name) => { const m = (text || "").match(new RegExp(`^##\\s*${name}\\s*$([\\s\\S]*?)(?=^##\\s|(?![\\s\\S]))`, "m")); return m ? m[1].trim() : ""; };
+const epRow = n => ((S.season || "").match(new RegExp(`^E0*${n}｜.*$`, "m")) || [""])[0].trim();
+const epTitle = n => (epRow(n).split("｜")[1] || "").trim();
+function epStatus(n) { const e = epData(n); if (!e) return ["", "未写"]; return e.ok.shots ? ["done", "分镜✓"] : e.ok.script ? ["mid", "剧本✓"] : e.ok.outline ? ["mid", "大纲✓"] : e.outline ? ["mid", "写作中"] : ["", "未写"]; }
+function seasonBrief() {
+  const n = S.ep, prev = [n - 2, n - 1].filter(m => m >= 1).map(m => { const o = epData(m)?.outline; return `第 ${m} 集：${secOf(o, "梗概") || epRow(m) || "（未写）"}`; });
+  return `片子：${(S.concept.match(/^#\s*(.+)/m) || [, ""])[1]}　${(S.concept.match(/一句话故事[：:](.+)/) || [, ""])[1]}
+整季人物表（人设圣经：姓名、年龄、标签、look 外貌必须逐字沿用，不许改；本集只列出场的人）：
+${secOf(S.season, "人物")}
+主线：${secOf(S.season, "主线")}
+本集是第 ${n} 集，分集表里这一行：${epRow(n) || "（分集表没有这一集，按主线自行安排）"}
+${epRow(n + 1) ? `下一集：${epRow(n + 1)}（本集结尾的悬念要把观众送进这一集）` : "这是最后一集：收束主线，可以留一个续季钩子。"}
+${prev.length ? "前情：\n" + prev.join("\n") : "这是第一集：前 10 秒立住人设和核心冲突。"}`;
+}
+
+// ---------- helpers ----------
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmt = s => { s = Math.max(0, Math.round(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
+const stripFence = t => { const m = t.match(/```[a-zA-Z]*\n([\s\S]*?)```/); return (m ? m[1] : t).trim() + "\n"; };
+const ERR = { not_granted: "你没有允许这个页面使用 Claude，可以手动编辑，或刷新页面后重新允许。", sampling_disabled: "这个账号暂时不能在页面里使用 Claude。",
+  rate_limited: "调用太频繁或额度已用完，请稍后再试。", session_expired: "登录已过期，请重新登录 Claude。", refused: "Claude 拒绝了这次请求，换个说法再试。",
+  invalid_json: "这次返回的格式不对，请再点一次。", prompt_too_large: "内容太长了，请先删减一些。", empty_completion: "这次没有生成内容，请再试一次。" };
+const errText = e => e?.code === "cancelled" ? "已停止。" : (ERR[e?.code] || "生成中断了，请再试一次。");
+
+let sample = null, downloads = null, ctl = null, busy = false;
+
+// ---------- prompts ----------
+const P = {
+  tags: () => `你是短剧策划。根据创作者的点子，从标签库里挑出最能让这个点子出彩的标签，也指出应该避开的俗套。
+点子："""${S.idea}"""
+类型：${S.genre}
+标签库（只能从这里选）：
+${TAG_GROUPS.map(g => `${g.k}（${g.t}）：${g.tags.join("、")}`).join("\n")}
+
+规则：每组选 0–2 个，总数 5–9 个；优先选能制造反差和新鲜感的组合，而不是最常见的搭配；avoid 选 2–4 个在这个点子上最容易写俗的标签。
+只输出 JSON：{"want":{"world":["…"],"her":["…"]},"avoid":["标签名"],"extra":["标签库里没有、但值得加的 1–3 个自定义标签"],"why":"一句话说明这个组合的看点"}`,
+
+  concept: () => { const T = tagStr(); return `你是顶尖短剧策划，熟悉 Snyder 的一句话故事、Hoxter 的 logline、Cron 的「渴望 vs 错误信念」和陆军的「戏核」方法。
+创作者的点子：
+"""${S.idea}"""
+类型：${S.genre}；单集时长：${S.secs} 秒；画幅：${S.aspect}。
+想要的标签：${T.want.join("；") || "（未选，自己判断）"}
+要避开的：${T.avoid.join("；") || "无"}
+${tasteBrief()}
+
+工作方法（先发散再收敛，过程不要输出）：
+1. 按「世界 → 主角处境 → 关系 → 设定钩子 → 爽点 → 结局 → 反转」七个模块，组合出 10 个彼此差异很大的前提，每个模块都要有具体选择，不能空泛。
+2. 对每个前提问：这是不是这些标签最常见的写法？如果是，就把其中一个模块反过来（例如强者其实是被保护的一方、甜宠的契约其实是陷阱），找到一个观众没见过的角度。
+3. 删掉最俗的 7 个，留下 3 个方向最不一样、最有画面感的。
+
+只输出一个 JSON 数组，3 个对象，字段如下（全部中文）：
+{"title":"片名","tags":"类型标签，用 × 分隔","oneLine":"一句话故事：反讽钩子 + 能脑补的画面，主角和反派各带一个形容词","logline":"主人公 + 激发事件 + 挑战 + 赌注 + 主题","fresh":"和这类题材最常见的写法相比，新在哪里，一句话","hook":"第一集前 10 秒观众会看到的画面","desire":"主角具体渴望什么","misbelief":"阻挡她/他的错误信念，以及结局如何被打破","core":"戏核：抽掉后戏就不成立的一个动作、道具、境遇或一句话","contrast":"人物性质 × 事件性质的错配","scores":{"钩子强度":8,"反差":8,"新鲜度":8,"情绪价值":8,"人设标签":8,"系列化":8,"AI可制作性":8,"合规":8},"weak":"最弱的两项及原因，一句话"}
+打分 1–10，要诚实：常见套路的新鲜度不能超过 6。`; },
+
+  merge: cs => `你是顶尖短剧策划。创作者从抽到的概念里挑了 ${cs.length} 张，想把它们合并成一个更强的概念。
+${cs.map((c, i) => `【${i + 1}】${c.title}\n一句话：${c.oneLine}\n新鲜点：${c.fresh}\n戏核：${c.core}\n核心反差：${c.contrast}`).join("\n\n")}
+类型：${S.genre}；单集时长：${S.secs} 秒；原始点子："""${S.idea}"""
+${S.mergeNote ? `创作者的合并要求：${S.mergeNote}` : ""}
+
+方法（过程不要输出）：先列出每张最有价值的 1–2 个零件（世界、主角处境、关系、设定钩子、爽点、反转、开场画面），找出它们之间能互相加强的连接点；不要平均拼贴，要选一张做骨架，其余只取能放大骨架的零件；最后检查合并后是否仍是一句话说得清的故事。
+只输出一个 JSON 对象，字段与概念卡相同：{"title","tags","oneLine","logline","fresh","hook","desire","misbelief","core","contrast","scores":{${SCORE_KEYS.map(k => `"${k}":8`).join(",")}},"weak","from":"一句话说明骨架用了哪张、从其他张各拿了什么"}
+打分要诚实，常见套路的新鲜度不能超过 6。`,
+
+  taste: () => `你是短剧策划。根据创作者在抽卡时保留和丢弃的概念，推断他的口味。
+保留的：
+${S.keep.map(c => `- ${c.title}｜${c.tags}｜${c.oneLine}｜新鲜点：${c.fresh}`).join("\n") || "（无）"}
+丢弃的：
+${S.toss.map(t => `- ${t}`).join("\n") || "（无）"}
+
+标签库（推荐标签只能从这里选）：
+${TAG_GROUPS.map(g => `${g.k}（${g.t}）：${g.tags.join("、")}`).join("\n")}
+
+只输出 JSON：{"summary":"一句话描述他的口味","likes":["他明显喜欢的 2–4 个具体元素"],"dislikes":["他明显不喜欢的 1–3 个"],"want":{"world":["…"]},"avoid":["标签名"],"try":"一个他没选过、但按口味很可能会喜欢的方向，一句话"}
+证据不足的地方不要硬猜，likes 和 dislikes 都要能从上面的选择里找到依据。`,
+
+  season: () => { const N = S.nEps, a = N >= 40 ? Math.round(N * 0.1) : Math.max(3, Math.round(N * 0.25)), b = N >= 40 ? Math.round(N * 0.18) : Math.max(4, Math.round(N * 0.35)); return `你是短剧总编剧。根据已确认的概念写整季大纲，之后会逐集展开，所以它是全季的「圣经」。
+已确认的概念：
+"""${S.concept}"""
+类型：${S.genre}；共 ${N} 集；每集 ${S.secs} 秒；画幅：${S.aspect}。
+
+规则：
+- 人物表之后每集都会逐字复用：姓名、年龄、标签、look 英文外貌一旦定下不再改；look 写固定主造型（发型、发色、脸型特征、主服装），方便 AI 画面保持一致。主要人物 3–6 个，之后会出现的关键配角也要进表。
+- 分幕：按集数切成 3–5 幕（开局立人设、升级、中段大反转、高潮、结局），每幕一行。
+- 分集：每集一行，一集只推进一件事，并且必须有新信息或关系变化，不能原地踏步；结尾钩子要让人想点下一集。
+- 每 3–5 集至少一个 #反转；${N >= 10 ? `第一个 #卡点（付费点）放在第 ${a}–${b} 集之间，之后大约每 10–15 集一个，卡点集的结尾是全剧最强的钩子；` : ""}主线和感情线交替推进，不能连续 3 集只走一条线。
+- 最后一集收束主线，可以留一个续季钩子；全季最大的爆点不放在最后一集；后期才发力的核心人物要在第 1–2 集露脸。
+- 每集要有状态变化（关系、身份、处境至少一项变了）；全季主场景不超过 ${4 + Math.ceil(N / 10)} 个，方便 AI 复用场景。
+- ${N > 30 ? `分幕要覆盖全部 ${N} 集；分集这次只写前 30 行（E01–E30），后面的之后续写。` : `分集行数必须正好 ${N} 行，从 E01 编到 E${pad(N)}。`}
+
+严格按下面的格式输出，不要输出其他内容：
+# 片名 共 ${N} 集 每集 ${S.secs} 秒
+## 人物
+C01｜姓名｜年龄｜标签｜渴望：…｜秘密：…｜说话方式：…｜look: English appearance description
+## 主线
+（3–5 句：核心冲突、感情线走向、最终结局）
+## 分幕
+第一幕 E01–E??｜这一幕做什么
+## 分集
+E01｜本集标题｜本集主事件（一句话）｜结尾钩子 #反转
+（#反转 #卡点 只在需要的集末尾加，没有就不加）`; },
+
+  more: (from, to) => `你是短剧总编剧。下面是整季大纲，分集表只写到了第 ${from - 1} 集。请续写 E${pad(from)}–E${pad(to)}，严格沿用人物、主线和分幕的安排，接住上一集的结尾钩子。
+"""${S.season}"""
+规则同前：一集只推进一件事并且必须有新信息或关系变化；每 3–5 集至少一个 #反转；卡点集按分幕和节奏安排，大约每 10–15 集一个 #卡点；${to >= S.nEps ? "最后一集收束主线，可以留续季钩子。" : ""}
+只输出这些分集行，每行格式：E${pad(from)}｜本集标题｜本集主事件（一句话）｜结尾钩子（需要时末尾加 #反转 或 #卡点）`,
+
+  review: () => `你是竖屏短剧平台的审片人，按下面的标准给这一集剧本打分，要严格：3 分是明显短板，6 分是合格但不出彩，9 分是同赛道头部水平。
+类型：${S.genre}；本集 ${S.secs} 秒；画幅 ${S.aspect}。
+${S.season ? `这一集在整季里的任务：${epRow(S.ep)}` : ""}
+标准（维度｜9 分长什么样）：
+前3秒钩子｜开场就是冲突、危机或强反差画面，不是空镜和铺垫
+冲突与爽点密度｜每 10–15 秒一个情绪拐点：压迫、反击、打脸、反转
+人设标签｜一眼看懂的人设，有明确的对抗方
+情绪价值｜精准击中这个类型该有的情绪（甜宠要甜，复仇要爽）
+集尾钩子｜结尾留悬念或反转，让人立刻点下一集
+竖屏视听｜动作和场面适合 9:16 的近景特写和快节奏
+系列化潜力｜设定能撑很多集
+合规｜符合平台审核，不擦边、不过度暴力
+剧本：
+"""${S.script}"""
+只输出 JSON：{"scores":{${REVIEW.map(([k]) => `"${k}":6`).join(",")}},"fixes":["最多 3 条，每条落到具体节拍号和具体改法，例如：第 6 拍改成……"]}`,
+
+  outline: () => `你是短剧编剧统筹。根据已确认的${S.season ? `整季大纲写第 ${S.ep} 集` : "概念写本集"}大纲。
+${S.season ? seasonBrief() : `已确认的概念：\n"""${S.concept}"""`}
+类型：${S.genre}；本集时长：${S.secs} 秒；画幅：${S.aspect}。
+
+规则：
+- 第一拍就是钩子（时间 0:00），之后每 10–20 秒一个拐点，最后一拍是悬念；节拍时间不超过 ${fmt(S.secs)}。
+- 节拍类型只能用：钩子、压迫、打脸、爽点、甜点、心动、反转、悬念。
+- 主角组不超过 ${S.secs <= 120 ? 3 : 5} 人，主场景不超过 5 个；后期才发力的核心人物要先露脸。
+- 入戏要快（起点近、焦点单、疑点少），高潮不早、不滑、不靠下跪耳光，转变不靠搬救兵，结尾不圆、不拖、不跳、不软。
+- 数一数变化：每个拐点都要让局面变一次，优先由人物性格和选择引起，而不是巧合。
+- 梗概用叙述体，不写引号对白。
+- 外貌描述用英文，之后会逐字复用到画面提示词里。${isSweet() ? "\n- 这是甜宠向：每集至少 1 个「甜点」或「心动」拍，甜要落在具体动作上（靠近、挡在身前、递东西），不能只靠台词。" : ""}
+
+严格按下面的格式输出，不要输出其他内容：
+## 角色
+C01｜姓名｜年龄｜标签｜渴望：…｜秘密：…｜说话方式：…｜look: English appearance description
+## 场景
+S01｜场景名 · 日/夜
+## 节拍
+0:00｜节拍内容｜钩子
+## 拍板
+砍掉：…（为了时长放弃了什么）
+合并：…（合并了哪些人或线）
+最大爆点：…（落在几分几秒，为什么）
+## 梗概
+（一段叙述体梗概）`,
+
+  script: () => `你是短剧编剧。根据已确认的大纲写本集剧本。剧本管戏、分镜管拍：不要写镜号和提示词。
+已确认的大纲：
+"""${S.outline}"""
+目标时长：${S.secs} 秒。
+
+时长算法（会被程序检查）：台词按 4.5 字/秒，每个动作节拍算 2.5 秒。总时长必须在 ${Math.round(S.secs * 0.85)}–${Math.round(S.secs * 1.15)} 秒之间。
+规则：
+- 前 3 拍内必须有 #钩子，最后一拍必须带 #悬念；任意两个带标签的节拍之间不超过 ${GAP_MAX} 秒。标签只能用 #钩子 #爽点 #甜点 #反转 #悬念。
+- 单句台词不超过 ${LINE_MAX} 字；说话人必须写在该场的「人物：」里，内心独白写「姓名（内心）」，旁白写「旁白」。
+- 每场至少一个动作节拍；动作只写 AI 视频常见的动作（抬头、转身、伸手、靠近、坐下），情绪写成身体动作，不写睫毛颤、指尖微动这类精细动作，动作里不写引号对白。
+- 对白要有动作意图，遮住名字也能分辨谁在说；不说两人都知道的事；不把潜台词直接说出来；能用动作替代的台词就删。
+- [动作] 和 [台词] 尽量交替；情绪用身体外化（低头、攥紧衣角、胸口起伏），不写「很悲伤」这类形容词。
+- 每场一个主角：想要什么、阻碍、至少三次升级、一个决定、一个结果。${isSweet() ? "\n- 大纲里的甜点、心动拍要写成具体动作，并标 #甜点。" : ""}
+
+严格按下面的格式输出，不要输出其他内容：
+# E${pad(S.ep)} ${epTitle(S.ep) || "本集标题"} 目标 ${S.secs} 秒
+## S01 内景 · 地点 · 日 ｜ 人物：甲, 乙
+1. [动作] …… #钩子
+2. [台词] 甲｜语气｜台词
+（节拍按集连续编号）`,
+
+  shots: () => `你是 AI 短剧分镜师。把已确认的剧本拆成分镜表。
+已确认的剧本：
+"""${S.script}"""
+画幅：${S.aspect}。
+
+规则（会被程序检查）：
+- 每个镜头用 beats 认领连续节拍（如 3-5 或 7），所有节拍按顺序、不重不漏地被认领，镜头不跨场次。
+- 每镜 ${CUT_MIN}–${CUT_MAX} 秒；镜头里的台词按 4.5 字/秒必须放得下；总时长约 ${S.secs} 秒。
+- frame_cn 是首帧提示词：中文，直呼角色名，必须含景别词（全景、中景、近景、特写、大特写等）。
+- video_cn 是视频提示词：中文，用通用身份（如「一名银发青年」），不出现角色名；一镜只有一个主运镜；动作在这几秒内做得完，写出幅度和速度；镜头里有台词时把台词逐字写进去；不写画风。
+- lens、camera_pos、composition、eyeline 必填；people 是同框人数，不超过 ${PEOPLE_MAX}；${S.aspect === "9:16" ? "竖屏多用近景和特写；" : ""}sound 只写环境声、动作声、非语言人声，不写配乐。
+- 钩子、高光和集尾镜头设计得细致一些（运镜、光线、特写道具），过场镜头从简；相邻镜头如需连续生成，组成的一段不超过 15 秒。
+- 字段内部一律用中文全角逗号「，」，不要出现英文逗号。
+
+只输出 CSV，第一行是表头：
+shot,beats,dur,size,camera,frame_cn,video_cn,lens,camera_pos,composition,eyeline,people,sound`
+};
+
+const UPSTREAM_FOR_REVISE = { concept: () => `创作者的点子：${S.idea}\n想要的标签：${tagStr().want.join("；")}\n要避开的：${tagStr().avoid.join("；")}`, season: () => `已确认的概念：\n${S.concept}\n共 ${S.nEps} 集，每集 ${S.secs} 秒。`, outline: () => S.season ? seasonBrief() : `已确认的概念：\n${S.concept}`, script: () => `已确认的大纲：\n${S.outline}`, shots: () => `已确认的剧本：\n${S.script}` };
+const NAMES = { concept: "概念", season: "整季大纲", outline: "大纲", script: "剧本", shots: "分镜表" };
+const revisePrompt = (k, note) => `下面是短剧的${NAMES[k]}，请按创作者的修改意见修改。只改意见涉及的部分，其余保持不变，格式保持完全一致。
+${UPSTREAM_FOR_REVISE[k]()}
+
+当前${NAMES[k]}：
+"""${S[k]}"""
+
+创作者的修改意见：${note}
+
+只输出修改后的完整${NAMES[k]}，不要解释。`;
+const fixPrompt = (k, errs) => `下面的短剧${NAMES[k]}没有通过程序质量检查。请逐条修正，尽量少改动其他内容，格式保持完全一致。
+${k === "shots" ? `对应的剧本：\n"""${S.script}"""\n` : ""}
+当前${NAMES[k]}：
+"""${S[k]}"""
+
+未通过的检查：
+${errs.map(e => "- " + e).join("\n")}
+
+${k === "script" ? "提醒：台词按 4.5 字/秒、每个动作 2.5 秒估算时长。" : "提醒：每镜时长要放得下台词（4.5 字/秒），字段内只用中文全角逗号。"}
+只输出修改后的完整${NAMES[k]}，不要解释。`;
+
+// ---------- parsing & gates ----------
+function parseScript(text) {
+  const ep = { target: null, cast: new Set(), beats: [] }; let scene = null;
+  text.split(/\r?\n/).forEach((raw, i) => {
+    const s = raw.trim(); let m;
+    if ((m = s.match(/^#\s*E\d+.*?目标\s*(\d+)\s*秒/))) { ep.target = +m[1]; return; }
+    if ((m = s.match(/^##\s*(S\d+).*?人物[:：](.*)$/))) { scene = m[1]; m[2].split(/[,，、]/).map(x => x.trim()).filter(Boolean).forEach(x => ep.cast.add(x)); return; }
+    if (!(m = s.match(/^(\d+)\.\s*\[(动作|台词)\]\s*(.*)$/))) return;
+    let body = m[3];
+    const tags = new Set([...body.matchAll(/#(钩子|爽点|甜点|反转|悬念)/g)].map(x => x[1]));
+    body = body.replace(/\s*#\S+/g, "").trim();
+    const b = { n: +m[1], kind: m[2], scene, tags, lineNo: i };
+    if (b.kind === "台词") { const p = body.split("｜").map(x => x.trim()); b.speaker = p[0]; b.line = p[p.length - 1]; b.sec = Math.max(1, b.line.replace(/[，。！？…、,.!?\s]/g, "").length / CPS); }
+    else { b.text = body; b.sec = ACT_SEC; }
+    ep.beats.push(b);
+  });
+  let t = 0; ep.beats.forEach(b => { b.t = t; t += b.sec; }); ep.total = t; return ep;
+}
+const gate = (name, fails, skip) => ({ name, fails, skip });
+function gatesScript(ep) {
+  const B = ep.beats, G = [];
+  if (!B.length) return [gate("解析到节拍", [{ msg: "没有解析到节拍，检查「1. [动作] …」格式" }])];
+  G.push(gate("标题写明目标时长", ep.target ? [] : [{ msg: "缺少「# E01 … 目标 N 秒」标题" }]));
+  G.push(gate("节拍编号连续", B.some((b, i) => b.n !== i + 1) ? [{ msg: "节拍编号不连续", beat: B.find((b, i) => b.n !== i + 1) }] : []));
+  G.push(gate(`时长在目标 ±${TOL * 100}% 内`, ep.target && Math.abs(ep.total - ep.target) > ep.target * TOL ? [{ msg: `估算 ${Math.round(ep.total)} 秒，目标 ${ep.target} 秒` }] : [], !ep.target));
+  G.push(gate("前 3 拍内有 #钩子", B.slice(0, 3).some(b => b.tags.has("钩子")) ? [] : [{ msg: "开场 3 拍里没有钩子", beat: B[0] }]));
+  G.push(gate("最后一拍是 #悬念", B[B.length - 1].tags.has("悬念") ? [] : [{ msg: "最后一拍没有悬念", beat: B[B.length - 1] }]));
+  G.push(gate(`单句台词 ≤ ${LINE_MAX} 字`, B.filter(b => b.kind === "台词" && b.line.length > LINE_MAX).map(b => ({ msg: `第 ${b.n} 拍台词 ${b.line.length} 字`, beat: b }))));
+  G.push(gate("说话人在场次人物表里", B.filter(b => { if (b.kind !== "台词") return false; const sp = b.speaker.replace(/（内心）|\(内心\)/, ""); return !ep.cast.has(sp) && !["旁白", "VO", "广播"].includes(sp) && !sp.startsWith("旁白"); }).map(b => ({ msg: `第 ${b.n} 拍「${b.speaker}」不在人物表`, beat: b }))));
+  G.push(gate("动作里不混引号台词", B.filter(b => b.kind === "动作" && b.text.includes("“")).map(b => ({ msg: `第 ${b.n} 拍动作里有对白`, beat: b }))));
+  const scenes = [...new Set(B.map(b => b.scene))];
+  G.push(gate("每场至少一个动作节拍", scenes.filter(sc => !B.some(b => b.scene === sc && b.kind === "动作")).map(sc => ({ msg: `${sc || "未命名场次"} 是纯对白场`, beat: B.find(b => b.scene === sc) }))));
+  const gaps = []; let last = 0;
+  B.forEach(b => { if (b.tags.size) { if (b.t - last > GAP_MAX) gaps.push({ msg: `${fmt(last)}–${fmt(b.t)} 共 ${Math.round(b.t - last)} 秒没有爽点 / 甜点 / 反转`, beat: b, from: last, to: b.t }); last = b.t; } });
+  G.push(gate(`爽点间隔 ≤ ${GAP_MAX} 秒`, gaps, false));
+  return G;
+}
+function parseCSV(text) {
+  const rows = []; let row = [], f = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true; else if (c === ",") { row.push(f); f = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(f); f = ""; if (row.some(x => x.trim())) rows.push(row); row = []; }
+    else f += c;
+  }
+  row.push(f); if (row.some(x => x.trim())) rows.push(row);
+  if (!rows.length) return [];
+  const head = rows[0].map(h => h.trim());
+  return rows.slice(1).map((r, i) => { const o = { _line: i + 1 }; head.forEach((h, j) => o[h] = (r[j] || "").trim()); return o; });
+}
+function gatesShots(ep, rows) {
+  const by = new Map(ep.beats.map(b => [b.n, b])), names = [...ep.cast].filter(c => c.length >= 2);
+  const G = { span: [], scene: [], dur: [], fit: [], size: [], names: [], people: [], comp: [] };
+  let covered = [], total = 0;
+  rows.forEach(r => {
+    const sid = r.shot || r._line; r._bad = false;
+    const add = (k, msg) => { G[k].push({ msg: `镜 ${sid}：${msg}`, row: r }); r._bad = true; };
+    const m = (r.beats || "").match(/^(\d+)(?:-(\d+))?$/);
+    r._dur = parseFloat(r.dur) || 0; total += r._dur;
+    if (!m) { add("span", "beats 应写成 3 或 3-5"); return; }
+    const a = +m[1], z = +(m[2] || m[1]), rng = []; for (let n = a; n <= z; n++) rng.push(n); covered.push(...rng);
+    if (new Set(rng.filter(n => by.has(n)).map(n => by.get(n).scene)).size > 1) add("scene", "跨场次");
+    if (r._dur < CUT_MIN || r._dur > CUT_MAX) add("dur", `时长 ${r._dur} 秒`);
+    const need = rng.filter(n => by.has(n) && by.get(n).kind === "台词").reduce((s, n) => s + by.get(n).sec, 0);
+    if (need > r._dur) add("fit", `台词约需 ${need.toFixed(1)} 秒，镜头只有 ${r._dur} 秒`);
+    if (!SIZES.some(s => (r.frame_cn || "").includes(s))) add("size", "首帧提示词缺景别词");
+    const hit = names.filter(n => (r.video_cn || "").includes(n)); if (hit.length) add("names", `视频提示词出现 ${hit.join("、")}`);
+    if ((+r.people || 0) > PEOPLE_MAX) add("people", `同框 ${r.people} 人`);
+    const miss = ["lens", "camera_pos", "composition", "eyeline"].filter(k => !(r[k] || "").trim()); if (miss.length) add("comp", `缺 ${miss.join("、")}`);
+  });
+  const expect = ep.beats.map(b => b.n), covFail = [];
+  if (covered.join() !== expect.join()) {
+    const seen = new Set(covered), missing = expect.filter(n => !seen.has(n)), dup = covered.filter((n, i) => covered.indexOf(n) !== i);
+    covFail.push({ msg: [missing.length ? `漏掉第 ${missing.join("、")} 拍` : "", dup.length ? `重复认领第 ${[...new Set(dup)].join("、")} 拍` : "", !missing.length && !dup.length ? "认领顺序乱了" : ""].filter(Boolean).join("；") });
+  }
+  const totFail = ep.target && Math.abs(total - ep.target) > ep.target * TOL ? [{ msg: `分镜共 ${Math.round(total)} 秒，目标 ${ep.target} 秒` }] : [];
+  return { total, rows, gates: [gate("节拍按顺序不重不漏", covFail), gate("beats 格式正确", G.span), gate("镜头不跨场次", G.scene), gate(`每镜 ${CUT_MIN}–${CUT_MAX} 秒`, G.dur), gate("台词放得进镜头", G.fit), gate(`总时长在目标 ±${TOL * 100}% 内`, totFail, !ep.target), gate("首帧提示词含景别词", G.size), gate("视频提示词不写角色名", G.names), gate(`同框 ≤ ${PEOPLE_MAX} 人`, G.people), gate("构图字段齐全", G.comp)] };
+}
+function parseSeason(text) {
+  const out = { chars: [], looks: 0, eps: [], hasMain: !!secOf(text, "主线") }; let sec = "";
+  text.split(/\r?\n/).forEach((raw, i) => {
+    const s = raw.trim(); let m;
+    if ((m = s.match(/^##\s*(\S+)/))) { sec = m[1]; return; }
+    if (sec === "人物" && /^C\d+｜/.test(s)) { out.chars.push(s.split("｜")[1]); if (/look[:：]\s*\S/i.test(s)) out.looks++; }
+    if (sec === "分集" && (m = s.match(/^E(\d+)｜(.*)$/))) {
+      const tags = new Set([...m[2].matchAll(/#(反转|卡点)/g)].map(x => x[1])), p = m[2].replace(/\s*#\S+/g, "").split("｜").map(x => x.trim());
+      out.eps.push({ n: +m[1], title: p[0] || "", event: p[1] || "", hook: p[2] || "", tags, lineNo: i });
+    }
+  });
+  return out;
+}
+function gatesSeason(o) {
+  const E = o.eps, G = [], N = S.nEps;
+  G.push(gate("有人物表，每人都有 look 外貌", !o.chars.length ? [{ msg: "没有解析到「C01｜…」人物行" }] : o.looks < o.chars.length ? [{ msg: `${o.chars.length - o.looks} 个人物缺 look 外貌` }] : []));
+  G.push(gate("写了主线", o.hasMain ? [] : [{ msg: "缺少「## 主线」" }]));
+  if (!E.length) return G.concat([gate("有分集表", [{ msg: "没有解析到「E01｜…」分集行" }])]);
+  G.push(gate(`正好 ${N} 集`, E.length === N ? [] : [{ msg: `现在有 ${E.length} 集` }]));
+  const bad = E.filter((e, i) => e.n !== i + 1);
+  G.push(gate("集号连续", bad.length ? [{ msg: `第 ${bad[0].n} 集编号不连续`, beat: bad[0] }] : []));
+  G.push(gate("每集有事件和结尾钩子", E.filter(e => !e.event || !e.hook).map(e => ({ msg: `E${pad(e.n)} 缺${!e.event ? "事件" : "结尾钩子"}`, beat: e }))));
+  if (N >= 6) { const gaps = []; let last = 0; E.concat([{ n: E.length + 1, tags: new Set(["end"]) }]).forEach(e => { if (e.tags.size) { if (e.n - last > 6) gaps.push({ msg: `E${pad(last + 1)}–E${pad(e.n - 1)} 连续 ${e.n - last - 1} 集没有反转或卡点`, beat: E[last] }); last = e.n; } });
+    G.push(gate("每 5 集内有反转或卡点", gaps)); }
+  if (N >= 10) G.push(gate("设了付费卡点", E.some(e => e.tags.has("卡点")) ? [] : [{ msg: "分集表里没有 #卡点" }]));
+  return G;
+}
+function parseOutline(text) {
+  const out = { chars: [], scenes: [], beats: [], hasDecision: /##\s*拍板/.test(text) }; let sec = "";
+  text.split(/\r?\n/).forEach((raw, i) => {
+    const s = raw.trim(); let m;
+    if ((m = s.match(/^##\s*(\S+)/))) { sec = m[1]; return; }
+    if (sec === "角色" && /^C\d+｜/.test(s)) out.chars.push(s.split("｜")[1]);
+    if (sec === "场景" && /^S\d+｜/.test(s)) out.scenes.push(s);
+    if (sec === "节拍" && (m = s.match(/^(\d+):(\d{1,2})｜(.+?)｜(\S+)\s*$/))) out.beats.push({ t: +m[1] * 60 + +m[2], text: m[3], type: m[4], lineNo: i });
+  });
+  return out;
+}
+function gatesOutline(o) {
+  const B = o.beats, G = [];
+  G.push(gate("有角色表", o.chars.length ? [] : [{ msg: "没有解析到「C01｜…」角色行" }]));
+  G.push(gate(`主角组 ≤ ${S.secs <= 120 ? 3 : 5} 人`, o.chars.length > (S.secs <= 120 ? 3 : 5) ? [{ msg: `现在有 ${o.chars.length} 个角色` }] : []));
+  G.push(gate("主场景 ≤ 5 个", o.scenes.length > 5 ? [{ msg: `现在有 ${o.scenes.length} 个场景` }] : []));
+  if (!B.length) return G.concat([gate("有节拍表", [{ msg: "没有解析到「0:00｜…｜钩子」节拍行" }])]);
+  G.push(gate("第一拍是钩子", B[0].type === "钩子" && B[0].t <= 3 ? [] : [{ msg: "0:00 的第一拍应该是钩子", beat: B[0] }]));
+  G.push(gate("最后一拍是悬念", B[B.length - 1].type === "悬念" ? [] : [{ msg: "最后一拍应该是悬念", beat: B[B.length - 1] }]));
+  const gaps = []; let prev = 0;
+  B.concat([{ t: S.secs, type: "end" }]).forEach(b => { if (b.t - prev > GAP_MAX) gaps.push({ msg: `${fmt(prev)}–${fmt(b.t)} 共 ${b.t - prev} 秒没有拐点`, beat: b.lineNo != null ? b : null, from: prev, to: b.t }); prev = b.t; });
+  G.push(gate(`拐点间隔 ≤ ${GAP_MAX} 秒`, gaps));
+  G.push(gate("节拍不超出片长", B.some(b => b.t > S.secs) ? [{ msg: `有节拍超过 ${fmt(S.secs)}`, beat: B.find(b => b.t > S.secs) }] : []));
+  if (isSweet()) G.push(gate("甜宠向：至少 1 个甜点或心动", B.some(b => b.type === "甜点" || b.type === "心动") ? [] : [{ msg: "这一集没有甜点或心动拍" }]));
+  G.push(gate("写了拍板三件事", o.hasDecision ? [] : [{ msg: "缺少「## 拍板」：砍掉、合并、最大爆点" }]));
+  return G;
+}
+
+// ---------- rendering ----------
+// Built once and then updated in place, so a click that blurs a field (whose change handler refreshes the rail) still lands
+function renderRail() {
+  const r = $("rail");
+  if (!r.children.length) {
+    STEPS.forEach((s, i) => { const b = document.createElement("button"); b.type = "button"; b.id = "step-" + s.k; b.onclick = () => { S.step = i; save(); render(); }; r.appendChild(b); });
+    const foot = document.createElement("div"); foot.className = "rail-foot";
+    foot.innerHTML = `<button class="btn small" type="button" id="autoBtn"></button><button class="btn small" type="button" id="exportAll">导出全部</button><button class="btn small" type="button" id="exportProj">导出项目文件</button><button class="btn small" type="button" id="importProj">导入项目</button><button class="btn small" type="button" id="newProj">新建项目</button><input type="file" id="importFile" accept=".json,application/json" hidden>`;
+    r.appendChild(foot);
+    $("exportProj").onclick = () => saveFile(`${projTitle()}-项目.json`, JSON.stringify(projectFile(), null, 2));
+    $("importProj").onclick = () => { const bt = $("importProj"); if (hasContent("concept") && !bt.dataset.c) { bt.dataset.c = 1; bt.textContent = "再点一次（会替换当前项目）"; setTimeout(() => { bt.textContent = "导入项目"; delete bt.dataset.c; }, 4000); return; } delete bt.dataset.c; bt.textContent = "导入项目"; $("importFile").click(); };
+    $("importFile").onchange = async () => { const f = $("importFile").files[0]; $("importFile").value = ""; if (!f) return;
+      try { importProject(await f.text()); setStatus(`已导入「${projTitle()}」。`); } catch (e) { render(); setStatus(typeof e === "string" ? e : "导入失败：文件读不出来。", "err"); } };
+    $("exportAll").onclick = exportAll; $("autoBtn").onclick = () => { S.autoOpen = !S.autoOpen; save(); renderRail(); renderAuto(); };
+    $("newProj").onclick = () => { const bt = $("newProj"); if (bt.dataset.c) { S = blank(); AP.log = []; save(); render(); } else { bt.dataset.c = 1; bt.textContent = "再点一次确认清空"; setTimeout(() => { bt.textContent = "新建项目"; delete bt.dataset.c; }, 3000); } };
+  }
+  STEPS.forEach((s, i) => {
+    const b = $("step-" + s.k), st = isStale(s.k);
+    b.className = "st" + (S.ok[s.k] ? " done" : "") + (st ? " stale" : "");
+    if (i === S.step) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current");
+    b.disabled = !unlocked(i);
+    b.innerHTML = `<span class="st-n">${S.ok[s.k] && !st ? "✓" : st ? "!" : i + 1}</span><span class="st-t">${s.t}</span><span class="st-d">${st ? "上游改了，需重审" : (S.nEps > 1 && EPK.includes(s.k) ? `第 ${S.ep} 集 · ` : "") + s.d}</span>`;
+  });
+  $("exportAll").disabled = $("newProj").disabled = $("exportProj").disabled = $("importProj").disabled = busy || AP.on; $("autoBtn").disabled = false;
+  const ab = $("autoBtn"); ab.className = "btn small" + (S.autoOpen ? " primary" : ""); ab.textContent = AP.on ? "自动驾驶中…" : "自动驾驶";
+}
+
+function statusEl() { return `<div class="status" id="status" role="status"></div>`; }
+function setStatus(msg, cls) { const s = $("status"); if (s) { s.textContent = msg || ""; s.className = "status" + (cls ? " " + cls : ""); } }
+
+function render() {
+  renderRail(); renderAuto();
+  const k = STEPS[S.step].k, d = $("desk");
+  ({ idea: deskIdea, tags: deskTags, concept: deskConcept, season: deskSeason, outline: deskOutline, script: deskScript, shots: deskShots })[k](d);
+}
+
+function deskIdea(d) {
+  d.innerHTML = `<section class="card">
+    <h2>第 1 步　一句话</h2>
+    <p class="lead">写下你的点子，一句话也行，完整的世界观也行。下一步 AI 会给你 3 个方向的概念。</p>
+    <textarea class="idea" id="idea" placeholder="例如：所有强大的哨兵都必须拥有向导，唯独她，是唯一能解除任何精神契约的人。">${esc(S.idea)}</textarea>
+    <div class="fields">
+      <label class="f wide">类型 / 赛道<input type="text" id="genre" value="${esc(S.genre)}"></label>
+      <label class="f">单集时长（秒）<input type="number" id="secs" min="15" max="900" step="5" value="${S.secs}"></label>
+      <label class="f">画幅<select id="aspect"><option ${S.aspect === "9:16" ? "selected" : ""}>9:16</option><option ${S.aspect === "16:9" ? "selected" : ""}>16:9</option></select></label>
+      <label class="f">&nbsp;<button class="btn primary" type="button" id="toConcept">确认，去选标签 →</button></label>
+    </div>
+    ${statusEl()}
+  </section>`;
+  const sync = () => { S.idea = $("idea").value; S.genre = $("genre").value || "AI 甜宠短剧"; S.secs = Math.max(15, Math.min(900, +$("secs").value || 60)); S.aspect = $("aspect").value; S.ok.idea = false; save(); renderRail(); };
+  ["idea", "genre", "secs", "aspect"].forEach(id => $(id).addEventListener("change", sync));
+  $("idea").addEventListener("input", () => { S.idea = $("idea").value; save(); });
+  $("toConcept").onclick = () => {
+    sync(); if (!S.idea.trim()) { setStatus("先写下你的点子。", "err"); return; }
+    const changed = S.base.tagsFor !== hash(S.idea);
+    S.ok.idea = true; S.step = 1; save(); render();
+    if (changed && sample) suggestTags();
+  };
+}
+
+function deskTags(d) {
+  const st = (g, t) => (S.tags[g] || {})[t] || 0;
+  const T = tagStr();
+  d.innerHTML = `<section class="card">
+    <h2>第 2 步　标签</h2>
+    <p class="lead">点一下是「想要」，再点一下是「避开」，第三下取消。AI 会按这些标签先发散 10 个前提，再挑出最不俗的 3 个。</p>
+    <div class="row"><button class="btn" type="button" id="suggest">AI 帮我推荐标签</button><button class="btn" type="button" id="clearTags">全部清空</button><button class="btn" type="button" id="stop" hidden>停止</button></div>
+    ${statusEl()}
+    ${S.tagWhy ? `<p class="why">推荐理由：${esc(S.tagWhy)}</p>` : ""}
+    <div class="tag-groups">${TAG_GROUPS.map(g => `<fieldset class="tg"><legend>${g.t}</legend><div class="chips">${g.tags.map(t => {
+      const v = st(g.k, t); return `<button type="button" class="chip ${v > 0 ? "want" : v < 0 ? "avoid" : ""}" data-g="${g.k}" data-t="${esc(t)}" aria-pressed="${v !== 0}">${v < 0 ? "✕ " : v > 0 ? "✓ " : ""}${esc(t)}</button>`; }).join("")}</div></fieldset>`).join("")}</div>
+    <label class="f">自定义标签（用逗号分隔）<input type="text" id="custom" value="${esc(S.custom)}" placeholder="例如：精神体是动物、静音是能力的标志"></label>
+    <div class="picked-line"><span><b>想要</b> ${T.want.length ? T.want.map(x => esc(x.split("：")[1])).join("、") : "未选"}</span><span><b>避开</b> ${T.avoid.length ? T.avoid.map(x => esc(x.split("：")[1])).join("、") : "未选"}</span></div>
+    <div class="row"><button class="btn ok" type="button" id="toConcept">确认标签，生成概念 →</button></div>
+  </section>`;
+  d.querySelectorAll(".chip").forEach(b => b.onclick = () => {
+    const g = b.dataset.g, t = b.dataset.t; S.tags[g] = S.tags[g] || {};
+    const v = S.tags[g][t] || 0, nv = v === 0 ? 1 : v === 1 ? -1 : 0;
+    if (nv) S.tags[g][t] = nv; else delete S.tags[g][t];
+    S.ok.tags = false; save(); render();
+  });
+  $("custom").addEventListener("change", () => { S.custom = $("custom").value; S.ok.tags = false; save(); render(); });
+  $("clearTags").onclick = () => { S.tags = {}; S.custom = ""; S.tagWhy = ""; S.ok.tags = false; save(); render(); };
+  $("suggest").onclick = suggestTags; $("stop").onclick = () => ctl?.abort();
+  $("toConcept").onclick = () => {
+    S.custom = $("custom").value; S.ok.tags = true; S.step = 2; save(); render();
+    if (!S.concepts.length || S.base.conceptsFor !== hash(upstreamOf("concept"))) genConcepts();
+  };
+}
+
+async function suggestTags() {
+  if (!needSample() || busy) return;
+  ctl = new AbortController(); setBusy(true); setStatus("AI 正在挑标签……", "busy");
+  try {
+    const r = await sample.json(P.tags(), { signal: ctl.signal, modelTier: "quick", cache: false });
+    const tags = {};
+    TAG_GROUPS.forEach(g => { const pick = (r?.want?.[g.k] || []).map(String).filter(t => g.tags.includes(t)); if (pick.length) tags[g.k] = Object.fromEntries(pick.map(t => [t, 1])); });
+    (r?.avoid || []).map(String).forEach(t => { const g = TAG_GROUPS.find(x => x.tags.includes(t)); if (g && !(tags[g.k] || {})[t]) { tags[g.k] = tags[g.k] || {}; tags[g.k][t] = -1; } });
+    S.tags = tags; S.custom = (r?.extra || []).map(String).join("，"); S.tagWhy = String(r?.why || ""); S.base.tagsFor = hash(S.idea); S.ok.tags = false;
+    save(); setBusy(false); render(); setStatus("已按你的点子预选，点标签可以调整。");
+  } catch (e) { setBusy(false); setStatus(errText(e), e?.code === "cancelled" ? "" : "err"); }
+}
+
+function conceptText(c) {
+  return `# ${c.title}\n类型：${c.tags}\n\n一句话故事：${c.oneLine}\n\nLogline：${c.logline}\n\n新鲜点：${c.fresh}\n开场画面：${c.hook}\n\n渴望：${c.desire}\n错误信念：${c.misbelief}\n戏核：${c.core}\n核心反差：${c.contrast}\n`;
+}
+function tasteBrief() {
+  const mode = { near: "这一轮 3 个都贴近他的口味，但不能和保留的重复。", mix: "这一轮 2 个贴近他的口味，1 个故意跳出口味、给一个意外方向。", far: "这一轮故意跳出他目前的口味，3 个都要和保留的牌明显不同。" }[S.mode];
+  const out = [];
+  if (S.taste) out.push(`推断的口味：${S.taste.summary}。喜欢：${(S.taste.likes || []).join("、")}。不喜欢：${(S.taste.dislikes || []).join("、")}。`);
+  if (S.keep.length) out.push(`他保留过的概念（口味参照，不要重复）：${S.keep.slice(-6).map(c => c.title + "：" + c.oneLine.slice(0, 40)).join("；")}`);
+  if (S.toss.length) out.push(`他丢弃过的概念（说明不喜欢这类，避开）：${S.toss.slice(-8).join("；")}`);
+  if (S.seen.length) out.push(`之前已经提过、不要重复的方向：${S.seen.slice(-9).join("；")}`);
+  if (S.keep.length || S.toss.length || S.taste) out.push(mode);
+  return out.join("\n");
+}
+const normConcept = c => ({ id: newId(), title: String(c.title || "未命名"), tags: String(c.tags || ""), oneLine: String(c.oneLine || ""), logline: String(c.logline || ""), fresh: String(c.fresh || ""), hook: String(c.hook || ""),
+  desire: String(c.desire || ""), misbelief: String(c.misbelief || ""), core: String(c.core || ""), contrast: String(c.contrast || ""), scores: c.scores || {}, weak: String(c.weak || ""), from: String(c.from || "") });
+const brief = c => c.title + "：" + c.oneLine.slice(0, 40);
+function cardHTML(c, where) {
+  const sc = c.scores || {}, tot = SCORE_KEYS.reduce((a, k) => a + (+sc[k] || 0), 0), on = S.picked === c.id, chk = S.sel.includes(c.id);
+  return `<article class="cc ${on ? "picked" : ""} ${chk ? "sel" : ""}">
+    <div class="row between"><h3>${esc(c.title)}</h3><span class="score" title="8 维立项总分">${tot}<small style="font-size:12px;color:var(--muted)">/80</small></span></div>
+    <div class="tags">${esc(c.tags)}</div>
+    ${c.from ? `<div class="from">合并自：${esc(c.from)}</div>` : ""}
+    <div><div class="k">一句话故事</div><p>${esc(c.oneLine)}</p></div>
+    ${c.fresh ? `<div><div class="k">新鲜点</div><p>${esc(c.fresh)}</p></div>` : ""}
+    ${c.hook ? `<div><div class="k">开场画面</div><p>${esc(c.hook)}</p></div>` : ""}
+    <div><div class="k">戏核</div><p>${esc(c.core)}</p></div>
+    <details><summary>8 维评分和弱项</summary><div class="bars">${SCORE_KEYS.map(k => `<span>${k}</span><i><b style="width:${(+sc[k] || 0) * 10}%"></b></i><span>${+sc[k] || 0}</span>`).join("")}</div>
+    <div class="weak">弱项：${esc(c.weak)}</div></details>
+    <div class="row">${where === "hand"
+      ? `<button class="btn small" type="button" data-keep="${c.id}">★ 保留</button><button class="btn small" type="button" data-toss="${c.id}">✕ 弃掉</button>`
+      : `<label class="pick-sel"><input type="checkbox" data-sel="${c.id}" ${chk ? "checked" : ""}> 选来合并</label><button class="btn small" type="button" data-toss="${c.id}">✕ 弃掉</button>`}
+      <button class="btn small ${on ? "ok" : ""}" type="button" data-pick="${c.id}">${on ? "已选用" : "用这个"}</button></div>
+  </article>`;
+}
+function deskConcept(d) {
+  const T = S.taste, nSel = S.sel.length;
+  d.innerHTML = `<section class="card">
+    <h2>第 3 步　概念</h2>
+    <p class="lead">像抽卡一样：喜欢的点「保留」进牌库，不喜欢的「弃掉」，然后再抽。保留和弃掉的牌会告诉 AI 你的口味；牌库里勾 2 张以上可以合并成一个。</p>
+    ${isStale("concept") ? `<div class="stale-bar">你改过点子、时长或标签，这些概念是按旧版本生成的。可以重新抽，也可以直接确认。</div>` : ""}
+    <div class="row"><button class="btn primary" type="button" id="gen">${S.concepts.length || S.keep.length ? "再抽 3 张" : "抽 3 张概念"}</button>
+      <label class="f inline">抽法 <select id="mode"><option value="mix">两张贴口味，一张出意外</option><option value="near">全部贴近口味</option><option value="far">换个口味</option></select></label>
+      <button class="btn" type="button" id="stop" hidden>停止</button></div>
+    ${statusEl()}
+    ${S.concepts.length ? `<h4 class="sec">这一轮</h4><div class="concepts">${S.concepts.map(c => cardHTML(c, "hand")).join("")}</div>` : ""}
+  </section>
+  <section class="card">
+    <div class="row between"><h2 style="font-size:17px">我的牌库 <small class="cnt">保留 ${S.keep.length} · 弃掉 ${S.toss.length}</small></h2>
+      <div class="row"><button class="btn" type="button" id="taste" ${S.keep.length + S.toss.length < 3 ? "disabled title=\"至少保留或弃掉 3 张后再推断\"" : ""}>推断我的口味</button></div></div>
+    ${T ? `<div class="taste"><p><b>你的口味：</b>${esc(T.summary)}</p>
+      <p><b>喜欢</b> ${(T.likes || []).map(esc).join("、") || "—"}　<b>不喜欢</b> ${(T.dislikes || []).map(esc).join("、") || "—"}</p>
+      ${T.try ? `<p><b>可能会喜欢</b> ${esc(T.try)}</p>` : ""}
+      <div class="row"><button class="btn small" type="button" id="applyTaste">把推断的标签加到第 2 步</button></div></div>` : ""}
+    ${S.keep.length ? `<div class="concepts">${S.keep.map(c => cardHTML(c, "deck")).join("")}</div>
+      <div class="merge"><input type="text" id="mergeNote" value="${esc(S.mergeNote)}" placeholder="合并要求（可不填），例如：用 A 的世界观，B 的男主"><button class="btn primary" type="button" id="merge" ${nSel < 2 ? "disabled" : ""}>合并选中的 ${nSel} 张</button></div>`
+      : `<p class="hint">还没有保留的牌。在上面点「★ 保留」，牌就会留在这里，重抽也不会丢。</p>`}
+  </section>
+  <section class="card" id="conceptEdit" ${S.concept ? "" : "hidden"}>
+    <div class="row between"><h2 style="font-size:17px">选定的概念</h2>${viewToggle("concept")}</div>
+    ${docArea("concept", "doc short")}
+    ${reviseBlock()}
+    <div class="row"><button class="btn ok" type="button" id="confirm">确认概念，进入整季 →</button></div>
+  </section>`;
+  $("mode").value = S.mode; $("mode").onchange = () => { S.mode = $("mode").value; save(); };
+  $("gen").onclick = genConcepts; $("stop").onclick = () => ctl?.abort();
+  const find = id => S.concepts.find(c => c.id === id) || S.keep.find(c => c.id === id);
+  d.querySelectorAll("[data-keep]").forEach(b => b.onclick = () => { const c = find(b.dataset.keep); S.concepts = S.concepts.filter(x => x !== c); S.keep.push(c); save(); render(); });
+  d.querySelectorAll("[data-toss]").forEach(b => b.onclick = () => { const c = find(b.dataset.toss); S.concepts = S.concepts.filter(x => x !== c); S.keep = S.keep.filter(x => x !== c); S.sel = S.sel.filter(x => x !== c.id); S.toss.push(brief(c)); save(); render(); });
+  d.querySelectorAll("[data-sel]").forEach(b => b.onchange = () => { const id = b.dataset.sel; S.sel = b.checked ? [...S.sel, id] : S.sel.filter(x => x !== id); save(); render(); });
+  d.querySelectorAll("[data-pick]").forEach(b => b.onclick = () => { const c = find(b.dataset.pick); S.picked = c.id; S.concept = conceptText(c); S.view.concept = "read"; S.ok.concept = false; markBase("concept"); save(); render(); });
+  $("taste").onclick = inferTaste;
+  if ($("applyTaste")) $("applyTaste").onclick = () => {
+    const w = T.want || {}; TAG_GROUPS.forEach(g => (w[g.k] || []).forEach(t => { if (g.tags.includes(t)) { S.tags[g.k] = S.tags[g.k] || {}; S.tags[g.k][t] = 1; } }));
+    (T.avoid || []).forEach(t => { const g = TAG_GROUPS.find(g => g.tags.includes(t)); if (g) { S.tags[g.k] = S.tags[g.k] || {}; S.tags[g.k][t] = -1; } });
+    save(); render(); setStatus("已把推断的标签加到第 2 步，下次抽卡会用上。");
+  };
+  if ($("mergeNote")) $("mergeNote").onchange = () => { S.mergeNote = $("mergeNote").value; save(); };
+  if ($("merge")) $("merge").onclick = mergeConcepts;
+  if (S.concept) bindDoc("concept", "season");
+}
+
+function reviseBlock() {
+  return `<div class="revise"><input type="text" id="note" placeholder="修改意见，例如：女主更主动一点；开场换成她先出手"><button class="btn" type="button" id="revise">按意见修改</button></div>`;
+}
+
+function bindDoc(k, next, onInput) {
+  const ta = $("doc"); bindView(k);
+  ta.addEventListener("input", () => { S[k] = ta.value; S.ok[k] = false; save(); renderRail(); onInput && onInput(); });
+  $("revise").onclick = () => { const n = $("note").value.trim(); if (!n) { setStatus("先写下修改意见。", "err"); return; } runText(k, revisePrompt(k, n), onInput); };
+  $("confirm").onclick = () => {
+    S[k] = ta.value; if (!S[k].trim()) { setStatus("内容是空的。", "err"); return; }
+    S.ok[k] = true; markBase(k);
+    const i = STEPS.findIndex(s => s.k === next);
+    if (i < 0) {
+      if (S.ep < S.nEps) { loadEp(S.ep + 1); S.step = STEPS.findIndex(s => s.k === "outline"); save(); render(); if (!S.outline) genStep("outline"); return; }
+      save(); render(); setStatus(S.nEps > 1 ? "全季最后一集的分镜已确认。可以点左下角「导出全部」保存成文件。" : "分镜已确认。可以点左下角「导出全部」保存成文件。"); return; }
+    S.step = i; save(); render();
+    if (!S[next] && next !== "season") genStep(next);
+  };
+}
+
+function deskSeason(d) {
+  deskDoc(d, "season", "第 4 步　整季", "先定整季：人物圣经（外貌固定，之后每集逐字复用）、主线、分幕和每集一行的分集表。之后逐集写大纲、剧本、分镜，每集都带着前情写。", "outline", "确认整季，开始写第 1 集 →", "doc", renderSeasonCheck,
+    `格式：<code>## 人物</code> <code>C01｜姓名｜…｜look: …</code> · <code>## 主线</code> · <code>## 分幕</code> · <code>## 分集</code> <code>E01｜标题｜事件｜结尾钩子 #反转</code>`,
+    `<div class="row"><label class="f inline">集数 <input type="number" id="nEps" min="1" max="100" value="${S.nEps}" style="width:5.5em"></label><span class="hint">每集 ${S.secs} 秒，可以在第 1 步改</span><button class="btn small" type="button" id="single">只写一集，跳过整季</button></div>`);
+  $("nEps").addEventListener("change", () => { S.nEps = Math.max(1, Math.min(100, Math.round(+$("nEps").value || 1))); S.ok.season = false; save(); renderRail(); renderSeasonCheck(); });
+  $("single").onclick = () => { S.nEps = 1; S.season = ""; S.ok.season = true; markBase("season"); if (S.ep !== 1) loadEp(1); S.step = STEPS.findIndex(s => s.k === "outline"); save(); render(); if (!S.outline) genStep("outline"); };
+}
+function epBar() {
+  if (S.nEps <= 1) return "";
+  return `<div class="epbar"><button class="btn small" type="button" id="epPrev" ${S.ep <= 1 ? "disabled" : ""} aria-label="上一集">←</button>
+    <select id="epSel" aria-label="切换集数">${Array.from({ length: S.nEps }, (_, i) => i + 1).map(n => `<option value="${n}" ${n === S.ep ? "selected" : ""}>第 ${n} 集${epTitle(n) ? "　" + esc(epTitle(n)) : ""}　·　${epStatus(n)[1]}</option>`).join("")}</select>
+    <button class="btn small" type="button" id="epNext" ${S.ep >= S.nEps ? "disabled" : ""} aria-label="下一集">→</button>
+    ${epRow(S.ep) ? `<span class="eprow">${esc(epRow(S.ep).split("｜").slice(2).join("　→　"))}</span>` : ""}</div>`;
+}
+function bindEpBar() {
+  const go = n => { if (busy || n < 1 || n > S.nEps) return; loadEp(n); S.step = STEPS.findIndex(s => s.k === "outline"); if (S.ok.outline) S.step++; if (S.ok.script) S.step++; save(); render(); };
+  if ($("epSel")) { $("epSel").onchange = () => go(+$("epSel").value); $("epPrev").onclick = () => go(S.ep - 1); $("epNext").onclick = () => go(S.ep + 1); }
+}
+function deskOutline(d) { deskDoc(d, "outline", "第 5 步　大纲", "角色表、场景、节拍时间轴和拍板三件事。时间轴上能直接看到节奏空档。", "script", "确认大纲，进入剧本 →", "doc", renderOutlineCheck); }
+function deskScript(d) { deskDoc(d, "script", "第 6 步　剧本", "剧本管戏：只有场次、动作和台词，没有镜号。右边实时检查时长、钩子和爽点间隔。", "shots", "确认剧本，进入分镜 →", "doc", renderScriptCheck,
+  `格式：<code># E01 标题 目标 N 秒</code> · <code>## S01 场景 ｜ 人物：甲, 乙</code> · <code>1. [动作] … #钩子</code> · <code>2. [台词] 甲｜语气｜台词</code>`); }
+function deskShots(d) { deskDoc(d, "shots", "第 7 步　分镜", "每个镜头认领剧本里的节拍。首帧提示词直呼角色名，视频提示词只用通用身份。", null, S.ep < S.nEps ? `确认分镜，写第 ${S.ep + 1} 集 →` : "确认分镜", "doc csv", renderShotsCheck,
+  `列：<code>shot,beats,dur,size,camera,frame_cn,video_cn,lens,camera_pos,composition,eyeline,people,sound</code>`); }
+
+function deskDoc(d, k, title, lead, next, confirmLabel, cls, check, hint, extra) {
+  d.innerHTML = `<section class="card">
+    ${EPK.includes(k) ? epBar() : ""}
+    <div class="row between"><h2>${title}${EPK.includes(k) && S.nEps > 1 ? `<small class="cnt">第 ${S.ep} 集</small>` : ""}</h2><div class="row">${viewToggle(k)}<button class="btn small" type="button" id="dl">下载</button></div></div>
+    <p class="lead">${lead}</p>
+    ${extra || ""}
+    ${isStale(k) ? `<div class="stale-bar">上一步改过了，这一版是按旧内容写的。可以「重新生成」，或用修改意见只改受影响的部分。</div>` : ""}
+    <div class="row"><button class="btn primary" type="button" id="gen">${S[k] ? "重新生成" : "生成" + NAMES[k]}</button><button class="btn" type="button" id="fix" hidden>按检查结果自动修</button><button class="btn" type="button" id="stop" hidden>停止</button></div>
+    ${statusEl()}
+    <div class="two">
+      <div style="display:grid;gap:10px;min-width:0">
+        ${docArea(k, cls)}
+        ${hint ? `<p class="hint">${hint}</p>` : ""}
+        ${reviseBlock()}
+      </div>
+      <div class="panel" id="check"></div>
+    </div>
+    <div class="row"><button class="btn ok" type="button" id="confirm">${confirmLabel}</button></div>
+  </section>`;
+  $("gen").onclick = () => genStep(k); $("stop").onclick = () => ctl?.abort();
+  const ep = S.nEps > 1 && EPK.includes(k) ? `E${pad(S.ep)}-` : "";
+  $("dl").onclick = () => saveFile(ep + ({ concept: "1-concept.md", season: "1-season.md", outline: "2-outline.md", script: "3-script.md", shots: "4-shots.csv" })[k], S[k]);
+  bindDoc(k, next, check); bindEpBar();
+  check();
+}
+
+// ---------- reading view ----------
+function viewToggle(k) {
+  const v = S.view[k] || (S[k] ? "read" : "edit");
+  return `<div class="seg" role="group" aria-label="显示方式"><button type="button" class="btn small" id="vRead" aria-pressed="${v === "read"}">阅读</button><button type="button" class="btn small" id="vEdit" aria-pressed="${v === "edit"}">编辑</button></div>`;
+}
+function docArea(k, cls) {
+  const v = S.view[k] || (S[k] ? "read" : "edit");
+  return `<textarea class="${cls}" id="doc" spellcheck="false" placeholder="点「生成」让 AI 写，或直接在这里写。" ${v === "read" ? "hidden" : ""}>${esc(S[k])}</textarea>
+    <div class="reader ${k}" id="reader" ${v === "read" ? "" : "hidden"}>${readerHTML(k, S[k])}</div>`;
+}
+function setView(k, v) {
+  S.view[k] = v; save();
+  const ta = $("doc"), rd = $("reader"); if (!ta || !rd) return;
+  if (v === "read") rd.innerHTML = readerHTML(k, ta.value);
+  ta.hidden = v === "read"; rd.hidden = v !== "read";
+  const a = $("vRead"), b = $("vEdit"); if (a) a.setAttribute("aria-pressed", v === "read"); if (b) b.setAttribute("aria-pressed", v === "edit");
+}
+function paintReader(k, text) { const rd = $("reader"); if (rd && !rd.hidden) rd.innerHTML = readerHTML(k, text); }
+function bindView(k) { const a = $("vRead"), b = $("vEdit"); if (a) a.onclick = () => setView(k, "read"); if (b) b.onclick = () => setView(k, "edit"); }
+const chipTag = t => `<span class="tchip" style="--c:var(${TAGS[t] || "--other"})">${esc(t)}</span>`;
+function readerHTML(k, text) {
+  text = text || ""; if (!text.trim()) return `<p class="empty">还没有内容。点「生成」，或切到「编辑」自己写。</p>`;
+  const L = text.split(/\r?\n/);
+  if (k === "concept") return L.map(l => { l = l.trim(); let m;
+    if (!l) return ""; if ((m = l.match(/^#\s*(.+)/))) return `<h3>${esc(m[1])}</h3>`;
+    if ((m = l.match(/^([^：:]{1,10})[：:]\s*(.+)$/))) return `<div class="kv"><span>${esc(m[1])}</span><p>${esc(m[2])}</p></div>`;
+    return `<p>${esc(l)}</p>`; }).join("");
+  if (k === "outline" || k === "season") { let sec = "", h = "";
+    L.forEach(raw => { const l = raw.trim(); let m; if (!l) return;
+      if ((m = l.match(/^##\s*(.+)/))) { sec = m[1].trim(); h += `<h4>${esc(sec)}</h4>`; return; }
+      if (sec === "分集" && (m = l.match(/^E(\d+)｜(.*)$/))) { const tags = [...m[2].matchAll(/#(\S+)/g)].map(x => x[1]), p = m[2].replace(/\s*#\S+/g, "").split("｜").map(x => x.trim());
+        h += `<div class="beat ep"><span class="tc">E${pad(+m[1])}</span><div><b>${esc(p[0] || "")}</b> ${tags.map(t => `<span class="tchip" style="--c:var(${t === "卡点" ? "--shuang" : "--twist"})">${esc(t)}</span>`).join("")}<p>${esc(p[1] || "")}</p>${p[2] ? `<p class="hk">钩子：${esc(p[2])}</p>` : ""}</div></div>`; return; }
+      if (sec === "分幕" && (m = l.match(/^(.+?)｜(.+)$/))) { h += `<div class="kv"><span>${esc(m[1])}</span><p>${esc(m[2])}</p></div>`; return; }
+      if ((sec === "角色" || sec === "人物") && /^C\d+｜/.test(l)) { const p = l.split("｜"), look = p.find(x => /^look[:：]/i.test(x)) || "", rest = p.slice(4).filter(x => x !== look);
+        h += `<div class="ch"><div class="ch-hd"><b>${esc(p[1] || "")}</b><span>${esc(p[0])} · ${esc(p[2] || "")}</span><em>${esc(p[3] || "")}</em></div>${rest.map(x => `<p>${esc(x)}</p>`).join("")}${look ? `<p class="look">${esc(look.replace(/^look[:：]\s*/i, ""))}</p>` : ""}</div>`; return; }
+      if (sec === "节拍" && (m = l.match(/^(\d+:\d{1,2})｜(.+?)｜(\S+)\s*$/))) { h += `<div class="beat"><span class="tc">${m[1]}</span>${chipTag(m[3])}<p>${esc(m[2])}</p></div>`; return; }
+      if (sec === "场景" && /^S\d+｜/.test(l)) { const p = l.split("｜"); h += `<div class="beat"><span class="tc">${esc(p[0])}</span><p>${esc(p.slice(1).join(" · "))}</p></div>`; return; }
+      if ((m = l.match(/^([^：:]{1,8})[：:]\s*(.+)$/)) && sec === "拍板") { h += `<div class="kv"><span>${esc(m[1])}</span><p>${esc(m[2])}</p></div>`; return; }
+      h += `<p>${esc(l)}</p>`; });
+    return h; }
+  if (k === "script") return L.map(raw => { const l = raw.trim(); let m; if (!l) return "";
+    if ((m = l.match(/^#\s+(.+)/))) return `<h3>${esc(m[1])}</h3>`;
+    if ((m = l.match(/^##\s*(.+)/))) return `<div class="slug">${esc(m[1])}</div>`;
+    if ((m = l.match(/^(\d+)\.\s*\[(动作|台词)\]\s*(.*)$/))) {
+      const tags = [...m[3].matchAll(/#(\S+)/g)].map(x => x[1]), body = m[3].replace(/\s*#\S+/g, "").trim(), chips = tags.map(chipTag).join("");
+      if (m[2] === "动作") return `<div class="act"><span class="n">${m[1]}</span><p>${esc(body)} ${chips}</p></div>`;
+      const p = body.split("｜").map(x => x.trim());
+      return `<div class="dl"><span class="n">${m[1]}</span><div><div class="who">${esc(p[0])}${p.length > 2 ? `<span>（${esc(p[1])}）</span>` : ""} ${chips}</div><p>${esc(p[p.length - 1])}</p></div></div>`; }
+    return `<p class="note">${esc(l)}</p>`; }).join("");
+  if (k === "shots") { const rows = parseCSV(text); if (!rows.length) return `<p class="empty">还没有解析到镜头。</p>`;
+    return `<div class="shots">${rows.map(r => `<article class="shot"><div class="shot-hd"><b>镜 ${esc(r.shot)}</b><span>${esc(r.dur)} 秒 · ${esc(r.size)} · ${esc(r.camera)}</span><span class="tc">第 ${esc(r.beats)} 拍</span></div>
+      <div class="kv"><span>首帧</span><p>${esc(r.frame_cn)}</p></div><div class="kv"><span>视频</span><p>${esc(r.video_cn)}</p></div>
+      <p class="meta">${[r.lens, r.camera_pos, r.composition, r.eyeline && "视线：" + r.eyeline, r.people && r.people + " 人", r.sound && "声音：" + r.sound].filter(Boolean).map(esc).join(" · ")}</p></article>`).join("")}</div>`; }
+  return `<pre>${esc(text)}</pre>`;
+}
+
+function gateList(G, pick) {
+  return `<ul class="gates">${G.map((g, gi) => {
+    const ic = g.skip ? ["skip", "–"] : g.fails.length ? ["bad", "✗"] : ["ok", "✓"];
+    return `<li><div class="g-hd"><span class="g-ic ${ic[0]}">${ic[1]}</span><span class="g-nm">${esc(g.name)}</span></div>${g.fails.length ? `<ul class="g-list">${g.fails.map((f, fi) => `<li><button type="button" data-g="${gi}" data-f="${fi}">${esc(f.msg)}</button></li>`).join("")}</ul>` : ""}</li>`;
+  }).join("")}</ul>`;
+}
+function bindGateClicks(G, toLine) { $("check").querySelectorAll("[data-g]").forEach(b => b.onclick = () => { const f = G[+b.dataset.g].fails[+b.dataset.f]; const ln = toLine(f); if (ln != null) selectLine(ln); }); }
+function selectLine(lineNo) {
+  setView(STEPS[S.step].k, "edit");
+  const ta = $("doc"), lines = ta.value.split("\n"); let st = 0;
+  for (let i = 0; i < lineNo && i < lines.length; i++) st += lines[i].length + 1;
+  ta.focus(); ta.setSelectionRange(st, st + (lines[lineNo] || "").length);
+  const lh = parseFloat(getComputedStyle(ta).lineHeight) || 22; ta.scrollTop = Math.max(0, lineNo * lh - ta.clientHeight / 3);
+}
+function ticks(T) { const step = T > 240 ? 60 : T > 90 ? 30 : 10; let h = ""; for (let s = 0; s <= T; s += step) h += `<span style="left:${s / T * 100}%">${fmt(s)}</span>`; return `<div class="tl-ticks">${h}</div>`; }
+function legend(extra) { return `<div class="legend">${[["钩子", "--hook"], ["爽点/打脸", "--shuang"], ["甜点/心动", "--sweet"], ["反转", "--twist"], ["悬念", "--cliff"]].map(([k, v]) => `<span><i style="background:var(${v})"></i>${k}</span>`).join("")}${extra || ""}<span><i style="background:var(--fail);border-radius:2px"></i>超过 ${GAP_MAX} 秒的空档</span></div>`; }
+function setFix(errs) { const f = $("fix"); if (!f) return; f.hidden = !errs.length || !sample; f.onclick = () => runText(STEPS[S.step].k, fixPrompt(STEPS[S.step].k, errs)); }
+const verdict = n => `<div class="verdict ${n ? "bad" : "ok"}">${n ? `✗ ${n} 处没过，点条目可跳到对应行` : "✓ 全部检查通过"}</div>`;
+
+function renderSeasonCheck() {
+  const o = parseSeason($("doc").value), G = gatesSeason(o), n = G.reduce((a, g) => a + g.fails.length, 0), N = Math.max(S.nEps, o.eps.length, 1);
+  const byN = new Map(o.eps.map(e => [e.n, e]));
+  $("check").innerHTML = `<h4>整季检查</h4>${verdict(n)}
+    <div class="stats"><div><span class="k">分集</span><span class="v">${o.eps.length}<small> / ${S.nEps}</small></span></div><div><span class="k">人物</span><span class="v">${o.chars.length}</span></div><div><span class="k">反转 · 卡点</span><span class="v">${o.eps.filter(e => e.tags.has("反转")).length}<small> · </small>${o.eps.filter(e => e.tags.has("卡点")).length}</span></div></div>
+    <div class="epgrid">${Array.from({ length: N }, (_, i) => i + 1).map(k => { const e = byN.get(k), st = epStatus(k), t = e ? (e.tags.has("卡点") ? "--shuang" : e.tags.has("反转") ? "--twist" : "") : "";
+      return `<button type="button" class="epc ${st[0]} ${e ? "" : "miss"}" data-ep="${k}" ${t ? `style="--c:var(${t})"` : ""} title="E${pad(k)} ${esc(e ? e.title + "｜" + e.event : "分集表里没有")} · ${st[1]}">${k}</button>`; }).join("")}</div>
+    <div class="legend"><span><i style="background:var(--twist)"></i>反转</span><span><i style="background:var(--shuang)"></i>卡点</span><span><i style="background:var(--pass);border-radius:2px"></i>分镜已完成</span><span>点格子去写那一集</span></div>
+    ${o.eps.length && o.eps.length < S.nEps ? `<button class="btn primary" type="button" id="more">续写 E${pad(o.eps.length + 1)}–E${pad(Math.min(S.nEps, o.eps.length + 30))}</button>` : ""}
+    ${gateList(G)}`;
+  if ($("more")) $("more").onclick = () => moreEpisodes(o.eps.length + 1, Math.min(S.nEps, o.eps.length + 30));
+  $("check").querySelectorAll("[data-ep]").forEach(b => b.onclick = () => {
+    if (!S.ok.season) { setStatus("先确认整季大纲，再逐集写。", "err"); return; }
+    loadEp(+b.dataset.ep); S.step = STEPS.findIndex(s => s.k === "outline"); if (S.ok.outline) S.step++; if (S.ok.script) S.step++; save(); render(); });
+  bindGateClicks(G, f => f.beat?.lineNo);
+  setFix(G.flatMap(g => g.fails.map(f => `${g.name}：${f.msg}`)));
+}
+function renderOutlineCheck() {
+  const o = parseOutline($("doc").value), G = gatesOutline(o), n = G.reduce((a, g) => a + g.fails.length, 0), T = Math.max(S.secs, ...o.beats.map(b => b.t), 1);
+  const gaps = (G.find(g => g.name.startsWith("拐点")) || { fails: [] }).fails;
+  $("check").innerHTML = `<h4>大纲检查</h4>${verdict(n)}
+    <div class="stats"><div><span class="k">角色</span><span class="v">${o.chars.length}</span></div><div><span class="k">场景</span><span class="v">${o.scenes.length}</span></div><div><span class="k">节拍</span><span class="v">${o.beats.length}</span></div></div>
+    <div class="timeline"><div class="tl-tags">${o.beats.map(b => `<i style="left:${b.t / T * 100}%;background:var(${TAGS[b.type] || "--other"})" title="${fmt(b.t)} ${esc(b.type)}：${esc(b.text)}" data-l="${b.lineNo}"></i>`).join("")}</div>
+      <div class="tl-bar"><span class="act" style="width:100%;cursor:default"></span></div>
+      <div class="tl-gap">${gaps.map(f => `<b style="left:${f.from / T * 100}%;width:${(f.to - f.from) / T * 100}%"></b>`).join("")}</div>${ticks(T)}</div>
+    ${legend()}${gateList(G)}`;
+  $("check").querySelectorAll("[data-l]").forEach(i => i.onclick = () => selectLine(+i.dataset.l));
+  bindGateClicks(G, f => f.beat?.lineNo);
+  setFix(G.flatMap(g => g.fails.map(f => `${g.name}：${f.msg}`)));
+}
+function reviewBox() {
+  const rv = S.reviews[S.ep], cur = rv && rv.for === hash($("doc").value);
+  return `<div class="review"><h4>审片打分（短剧标准）</h4>
+    ${cur ? `<div class="rv-total ${rv.total >= S.auto.pass ? "ok" : "bad"}">${rv.total}<small> / 100 · 及格线 ${S.auto.pass}</small></div>
+      <div class="bars">${REVIEW.map(([k]) => `<span>${k}</span><i><b style="width:${(+rv.scores[k] || 0) * 10}%"></b></i><span>${+rv.scores[k] || 0}</span>`).join("")}</div>
+      ${rv.fixes.length ? `<ul class="fixes">${rv.fixes.map(f => `<li>${esc(f)}</li>`).join("")}</ul>` : ""}` : `<p class="hint">${rv ? "剧本改过了，上次的分数已失效。" : "让另一个 AI 按短剧标准给这一集打分，并给出具体改法。"}</p>`}
+    <div class="row"><button class="btn small" type="button" id="reviewBtn">${cur ? "重新打分" : "审片打分"}</button>${cur && rv.fixes.length ? `<button class="btn small" type="button" id="reviewFix">按审片意见改</button>` : ""}</div></div>`;
+}
+function bindReview() {
+  if ($("reviewBtn")) $("reviewBtn").onclick = () => { S.script = $("doc").value; reviewScript(); };
+  if ($("reviewFix")) $("reviewFix").onclick = () => runText("script", revisePrompt("script", S.reviews[S.ep].fixes.join("；")), renderScriptCheck);
+}
+async function reviewScript() {
+  if (!needSample() || busy) return null;
+  ctl = new AbortController(); setBusy(true); setStatus("审片 AI 正在按短剧标准打分……", "busy");
+  try {
+    const r = await sample.json(P.review(), { signal: ctl.signal, cache: false });
+    const sc = r?.scores || {}; if (!Object.keys(sc).length) throw { code: "invalid_json" };
+    const total = Math.round(REVIEW.reduce((a, [k, w]) => a + Math.max(0, Math.min(10, +sc[k] || 0)) * w / 10, 0));
+    const rv = { for: hash(S.script), total, scores: sc, fixes: (r.fixes || []).map(String).slice(0, 3) };
+    S.reviews[S.ep] = rv; save(); setBusy(false); setStatus(`审片 ${total} 分。`);
+    if (STEPS[S.step].k === "script" && $("check")) renderScriptCheck();
+    return rv;
+  } catch (e) { setBusy(false); setStatus(errText(e), e?.code === "cancelled" ? "" : "err"); return null; }
+}
+function renderScriptCheck() {
+  const ep = parseScript($("doc").value), G = gatesScript(ep), n = G.reduce((a, g) => a + g.fails.length, 0), T = ep.total || 1;
+  const gaps = (G.find(g => g.name.startsWith("爽点间隔")) || { fails: [] }).fails;
+  const bad = new Set(G.filter(g => !g.name.startsWith("爽点间隔")).flatMap(g => g.fails.filter(f => f.beat).map(f => f.beat.n)));
+  $("check").innerHTML = `<h4>剧本检查</h4>${verdict(n)}
+    <div class="stats"><div><span class="k">节拍</span><span class="v">${ep.beats.length}</span></div><div><span class="k">估算时长</span><span class="v">${fmt(ep.total)}<small> / ${fmt(ep.target || S.secs)}</small></span></div><div><span class="k">标签</span><span class="v">${ep.beats.filter(b => b.tags.size).length}</span></div></div>
+    ${ep.beats.length ? `<div class="timeline"><div class="tl-tags">${ep.beats.flatMap(b => [...b.tags].map(t => `<i style="left:${b.t / T * 100}%;background:var(${TAGS[t]})" title="${t} · 第 ${b.n} 拍 · ${fmt(b.t)}" data-l="${b.lineNo}"></i>`)).join("")}</div>
+      <div class="tl-bar">${ep.beats.map(b => `<span class="${bad.has(b.n) ? "bad" : b.kind === "动作" ? "act" : "dlg"}" style="width:${b.sec / T * 100}%" title="第 ${b.n} 拍 · ${fmt(b.t)} · ${esc(b.kind === "台词" ? b.speaker + "：" + b.line : b.text)}" data-l="${b.lineNo}"></span>`).join("")}</div>
+      <div class="tl-gap">${gaps.map(f => `<b style="left:${f.from / T * 100}%;width:${(f.to - f.from) / T * 100}%"></b>`).join("")}</div>${ticks(T)}</div>
+    ${legend(`<span><i style="background:var(--act);border-radius:2px"></i>动作</span><span><i style="background:var(--dlg);border-radius:2px"></i>台词</span>`)}` : ""}
+    ${gateList(G)}`;
+  $("check").querySelectorAll("[data-l]").forEach(i => i.onclick = () => selectLine(+i.dataset.l));
+  bindGateClicks(G, f => f.beat?.lineNo);
+  $("check").insertAdjacentHTML("beforeend", reviewBox()); bindReview();
+  setFix(G.flatMap(g => g.fails.map(f => `${g.name}：${f.msg}`)));
+}
+function renderShotsCheck() {
+  const ep = parseScript(S.script), R = gatesShots(ep, parseCSV($("doc").value)), n = R.gates.reduce((a, g) => a + g.fails.length, 0), T = R.total || 1;
+  $("check").innerHTML = `<h4>分镜检查（对照已确认的剧本）</h4>${verdict(n)}
+    <div class="stats"><div><span class="k">镜头</span><span class="v">${R.rows.length}</span></div><div><span class="k">总时长</span><span class="v">${fmt(R.total)}<small> / ${fmt(ep.target || S.secs)}</small></span></div><div><span class="k">平均每镜</span><span class="v">${R.rows.length ? (R.total / R.rows.length).toFixed(1) : 0}<small> 秒</small></span></div></div>
+    ${R.rows.length ? `<div class="timeline"><div class="tl-bar">${R.rows.map(r => `<span class="${r._bad ? "bad" : "dlg"}" style="width:${r._dur / T * 100}%" title="镜 ${esc(r.shot)} · ${esc(r.dur)} 秒 · ${esc(r.size)} · 第 ${esc(r.beats)} 拍" data-l="${r._line}"></span>`).join("")}</div>${ticks(T)}</div>
+    <div class="legend"><span><i style="background:var(--dlg);border-radius:2px"></i>镜头（宽度＝时长）</span><span><i style="background:var(--fail);border-radius:2px"></i>有问题的镜头</span></div>` : ""}
+    ${gateList(R.gates)}`;
+  $("check").querySelectorAll("[data-l]").forEach(i => i.onclick = () => selectLine(+i.dataset.l));
+  bindGateClicks(R.gates, f => f.row?._line);
+  setFix(R.gates.flatMap(g => g.fails.map(f => `${g.name}：${f.msg}`)));
+}
+
+// ---------- generation ----------
+function setBusy(on) {
+  busy = on;
+  ["gen", "revise", "confirm", "fix", "suggest", "toConcept", "more", "merge", "taste"].forEach(id => { const b = $(id); if (b) b.disabled = on; });
+  const st = $("stop"); if (st) st.hidden = !on;
+  const ta = $("doc"); if (ta) ta.readOnly = on;
+  document.querySelectorAll("#rail button").forEach(b => { if (on) b.disabled = true; });
+  if (!on) renderRail();
+}
+function needSample() { if (sample) return true; setStatus("这个页面要在 Claude 里打开才能用 AI 生成。你可以先手动编辑。", "err"); return false; }
+
+async function genConcepts() {
+  if (!needSample() || busy) return;
+  ctl = new AbortController(); setBusy(true); setStatus("AI 正在发散 10 个前提再挑 3 个……通常要 30–90 秒", "busy");
+  try {
+    const arr = await sample.json(P.concept(), { signal: ctl.signal, cache: false, modelTier: "complex" });
+    if (!Array.isArray(arr) || !arr.length) throw { code: "invalid_json" };
+    S.seen = S.seen.concat(S.concepts.map(brief));
+    S.concepts = arr.slice(0, 3).map(normConcept);
+    S.base.conceptsFor = hash(upstreamOf("concept")); save(); setBusy(false); render(); setStatus("喜欢的点「保留」，不喜欢的点「弃掉」，没处理的牌下次抽会被替换。"); return true;
+  } catch (e) { setBusy(false); setStatus(errText(e), e?.code === "cancelled" ? "" : "err"); return false; }
+}
+async function mergeConcepts() {
+  if (!needSample() || busy) return;
+  const cs = S.sel.map(id => S.keep.find(c => c.id === id)).filter(Boolean); if (cs.length < 2) return;
+  S.mergeNote = $("mergeNote")?.value || ""; ctl = new AbortController(); setBusy(true); setStatus(`AI 正在合并 ${cs.length} 张牌……通常要 20–60 秒`, "busy");
+  try {
+    const r = await sample.json(P.merge(cs), { signal: ctl.signal, cache: false, modelTier: "complex" });
+    if (!r || Array.isArray(r) || !r.title) throw { code: "invalid_json" };
+    const c = normConcept(r); if (!c.from) c.from = cs.map(x => x.title).join(" + ");
+    S.keep.push(c); S.sel = []; S.picked = c.id; S.concept = conceptText(c); S.view.concept = "read"; S.ok.concept = false; markBase("concept");
+    save(); setBusy(false); render(); setStatus("合并好了，新牌已放进牌库并选用。原来的牌还在。");
+  } catch (e) { setBusy(false); setStatus(errText(e), e?.code === "cancelled" ? "" : "err"); }
+}
+async function inferTaste() {
+  if (!needSample() || busy) return;
+  ctl = new AbortController(); setBusy(true); setStatus("AI 正在从你保留和弃掉的牌里推断口味……", "busy");
+  try {
+    const r = await sample.json(P.taste(), { signal: ctl.signal, cache: false, modelTier: "quick" });
+    if (!r || !r.summary) throw { code: "invalid_json" };
+    S.taste = { summary: String(r.summary), likes: (r.likes || []).map(String), dislikes: (r.dislikes || []).map(String), want: r.want || {}, avoid: (r.avoid || []).map(String), try: String(r.try || "") };
+    save(); setBusy(false); render(); setStatus("下次抽卡会按这个口味来，「抽法」可以选要不要跳出口味。");
+  } catch (e) { setBusy(false); setStatus(errText(e), e?.code === "cancelled" ? "" : "err"); }
+}
+function genStep(k) { return runText(k, P[k]()); }
+async function moreEpisodes(from, to) {
+  if (!needSample() || busy) return;
+  const ta = $("doc"), base = ta.value.replace(/\s+$/, "") + "\n";
+  ctl = new AbortController(); setBusy(true); setStatus(`AI 正在续写第 ${from}–${to} 集……`, "busy");
+  try {
+    const { text } = await sample(P.more(from, to), { signal: ctl.signal, cache: false, onText: ({ text }) => { ta.value = base + text; paintReader("season", ta.value); } });
+    const rows = stripFence(text).split(/\r?\n/).map(l => l.trim()).filter(l => /^E\d+｜/.test(l));
+    S.season = base + rows.join("\n") + "\n"; ta.value = S.season; S.ok.season = false; markBase("season"); save();
+    setBusy(false); renderSeasonCheck(); paintReader("season", S.season); setStatus(`续写了 ${rows.length} 集。`); return rows.length > 0;
+  } catch (e) { ta.value = base; setBusy(false); renderSeasonCheck(); setStatus(errText(e), e?.code === "cancelled" ? "" : "err"); return false; }
+}
+async function runText(k, prompt, after) {
+  if (!needSample() || busy) return;
+  const ta = $("doc"), before = S[k];
+  ctl = new AbortController(); setBusy(true); setStatus(`AI 正在写${NAMES[k]}……开始出字前通常要思考 20–60 秒`, "busy");
+  const check = { season: renderSeasonCheck, outline: renderOutlineCheck, script: renderScriptCheck, shots: renderShotsCheck }[k];
+  let started = false;
+  try {
+    const { text, truncated } = await sample(prompt, { signal: ctl.signal, cache: false, onText: ({ text }) => {
+      if (!started) { started = true; setStatus(`正在写${NAMES[k]}……`, "busy"); }
+      if (ta) { ta.value = text; ta.scrollTop = ta.scrollHeight; } paintReader(k, text);
+    } });
+    S[k] = stripFence(text); S.ok[k] = false; markBase(k); save();
+    if (ta) ta.value = S[k]; S.view[k] = "read"; save(); setView(k, "read");
+    setBusy(false); check && check(); after && after();
+    setStatus(truncated ? "内容太长被截断了，可以把时长调短一些再生成。" : `${NAMES[k]}写好了。看看右边的检查，满意就确认。`, truncated ? "err" : "");
+    return true;
+  } catch (e) {
+    if (ta) ta.value = before; S[k] = before; paintReader(k, before); setBusy(false); check && check();
+    setStatus(errText(e) + (e?.code === "cancelled" ? "已恢复到生成前的版本。" : ""), e?.code === "cancelled" ? "" : "err");
+    return false;
+  }
+}
+
+// ---------- autopilot: generate → gate check → auto-fix (≤3) → script review vs pass line → next step / next episode ----------
+const AP = { on: false, log: [] };
+const totOf = c => SCORE_KEYS.reduce((a, k) => a + (+(c.scores || {})[k] || 0), 0);
+function apLog(msg, cls) { AP.log.push({ t: new Date().toTimeString().slice(0, 5), msg, cls: cls || "" }); AP.log = AP.log.slice(-40); renderAuto(); }
+function apGoto(k) { S.step = STEPS.findIndex(s => s.k === k); save(); render(); }
+const failsOf = k => ({ season: () => gatesSeason(parseSeason(S.season)), outline: () => gatesOutline(parseOutline(S.outline)), script: () => gatesScript(parseScript(S.script)), shots: () => gatesShots(parseScript(S.script), parseCSV(S.shots)).gates })[k]().flatMap(g => g.fails.map(f => `${g.name}：${f.msg}`));
+async function apStage(k, fix = true) {
+  if (!S[k] || isStale(k)) { apLog(`${S.nEps > 1 && EPK.includes(k) ? `第 ${S.ep} 集 · ` : ""}生成${NAMES[k]}…`); if (!(await genStep(k))) return false; }
+  for (let i = 0; fix && i < 3; i++) {
+    const errs = failsOf(k); if (!errs.length) break;
+    apLog(`${NAMES[k]}有 ${errs.length} 处没过检查，自动修第 ${i + 1} 轮`); if (!(await runText(k, fixPrompt(k, errs)))) return false;
+  }
+  const left = failsOf(k); if (fix && left.length) apLog(`${NAMES[k]}修了 3 轮还有 ${left.length} 处没过，先继续，回头请看一下`, "warn");
+  return true;
+}
+async function autopilot() {
+  if (AP.on || busy || !needSample()) return;
+  AP.on = true; apLog("开始"); renderRail();
+  try {
+    while (AP.on) {
+      const k = STEPS[S.step].k;
+      if (k === "idea") { if (!S.idea.trim()) { apLog("先在第 1 步写下一句话点子", "err"); break; } S.ok.idea = true; apGoto("tags"); continue; }
+      if (k === "tags") { if (!tagStr().want.length && S.base.tagsFor !== hash(S.idea)) { apLog("AI 挑标签…"); await suggestTags(); } S.ok.tags = true; apGoto("concept"); continue; }
+      if (k === "concept") {
+        if (!S.concept) {
+          if (!S.concepts.length && !S.keep.length) { apLog("抽 3 张概念…"); if (!(await genConcepts())) break; }
+          if (S.auto.stopAt === "key") { apLog("挑一张概念（点「用这个」），然后点「继续」", "pause"); break; }
+          const best = [...S.concepts, ...S.keep].sort((a, b) => totOf(b) - totOf(a))[0];
+          S.picked = best.id; S.concept = conceptText(best); markBase("concept"); apLog(`自动选了分数最高的「${best.title}」`);
+        }
+        S.ok.concept = true; markBase("concept"); apGoto("season"); continue;
+      }
+      if (k === "season") {
+        if (S.nEps <= 1) { S.ok.season = true; markBase("season"); apGoto("outline"); continue; }
+        if (!(await apStage("season", S.nEps <= 30))) break;
+        for (let g = 0; g < 4; g++) { const n = parseSeason(S.season).eps.length; if (!n || n >= S.nEps) break; apLog(`续写第 ${n + 1} 集起的分集…`); if (!(await moreEpisodes(n + 1, Math.min(S.nEps, n + 30)))) break; }
+        if (S.auto.stopAt === "key" && S.auto.seasonSeen !== hash(S.season)) { S.auto.seasonSeen = hash(S.season); save(); apLog("整季大纲写好了，看一遍，满意就点「继续」", "pause"); break; }
+        S.ok.season = true; markBase("season"); apGoto("outline"); continue;
+      }
+      if (EPK.includes(k)) {
+        if (!(await apStage(k))) break;
+        if (k === "script") {
+          for (let r = 0; r < 2; r++) {
+            const rv = await reviewScript(); if (!rv) break;
+            apLog(`第 ${S.ep} 集审片 ${rv.total} 分`, rv.total >= S.auto.pass ? "ok" : "warn"); if (rv.total >= S.auto.pass) break;
+            if (r === 1) { apLog("重写后还没到及格线，先继续，回头请看一下这一集", "warn"); break; }
+            apLog("没到及格线，按审片意见重写…"); if (!(await runText("script", revisePrompt("script", rv.fixes.join("；"))))) break;
+            if (!(await apStage("script"))) break;
+          }
+          if (!AP.on) break;
+        }
+        S.ok[k] = true; markBase(k);
+        if (k !== "shots") { apGoto(EPK[EPK.indexOf(k) + 1]); continue; }
+        apLog(`第 ${S.ep} 集完成`, "ok");
+        if (S.ep >= Math.min(S.nEps, S.auto.upTo)) { save(); render(); apLog(`已经写到第 ${S.ep} 集，自动驾驶结束`, "ok"); break; }
+        loadEp(S.ep + 1); apGoto("outline");
+        if (S.auto.stopAt === "ep") { apLog(`点「继续」写第 ${S.ep} 集`, "pause"); break; }
+        continue;
+      }
+      break;
+    }
+  } finally { AP.on = false; save(); renderAuto(); renderRail(); }
+}
+function renderAuto() {
+  const a = $("auto"); if (!a) return;
+  if (!S.autoOpen) { a.innerHTML = ""; return; }
+  const A = S.auto;
+  a.innerHTML = `<section class="card auto">
+    <div class="row between"><h2 style="font-size:17px">自动驾驶</h2><button class="btn small" type="button" id="apClose">收起</button></div>
+    <p class="lead">从当前这一步自动往下写：生成，程序检查，没过就自动修（最多 3 轮）；剧本再交给审片 AI 按短剧标准打分，低于及格线就按意见重写一次；然后进入下一步、下一集。页面要一直开着，额度会比手动多用不少。</p>
+    <div class="row">
+      <label class="f inline">停在 <select id="apStopAt"><option value="key">挑概念、整季写好时</option><option value="ep">每写完一集</option><option value="none">不停</option></select></label>
+      <label class="f inline">写到第 <input type="number" id="apUpTo" min="1" max="100" value="${A.upTo}" style="width:4.5em"> 集</label>
+      <label class="f inline">审片及格线 <input type="number" id="apPass" min="50" max="95" value="${A.pass}" style="width:4.5em"></label>
+    </div>
+    <div class="row"><button class="btn primary" type="button" id="apGo" ${AP.on ? "disabled" : ""}>${AP.on ? "运行中…" : AP.log.length ? "继续" : "开始"}</button><button class="btn" type="button" id="apHalt" ${AP.on ? "" : "hidden"}>停止</button></div>
+    ${AP.log.length ? `<ol class="aplog">${AP.log.slice(-12).map(l => `<li class="${l.cls}"><span>${l.t}</span>${esc(l.msg)}</li>`).join("")}</ol>` : ""}
+  </section>`;
+  $("apStopAt").value = A.stopAt;
+  $("apStopAt").onchange = () => { A.stopAt = $("apStopAt").value; save(); };
+  $("apUpTo").onchange = () => { A.upTo = Math.max(1, Math.min(100, Math.round(+$("apUpTo").value || 1))); save(); };
+  $("apPass").onchange = () => { A.pass = Math.max(50, Math.min(95, Math.round(+$("apPass").value || 75))); save(); };
+  $("apGo").onclick = autopilot;
+  $("apHalt").onclick = () => { AP.on = false; ctl?.abort(); apLog("已停止", "warn"); };
+  $("apClose").onclick = () => { S.autoOpen = false; save(); renderRail(); renderAuto(); };
+}
+
+// ---------- project file: same shape the Claude Code kit reads and writes (drama-studio/.claude/skills/short-drama-preprod/scripts/studio_sync.py) ----------
+const projTitle = () => (S.concept.match(/^#\s*(.+)/m) || [, "短剧项目"])[1].trim();
+function projectFile() {
+  S.eps[S.ep] = snapEp(); const eps = {};
+  for (let n = 1; n <= Math.max(1, S.nEps); n++) { const e = S.eps[n]; if (e && (e.outline || e.script || e.shots)) eps[n] = { outline: e.outline || "", script: e.script || "", shots: e.shots || "" }; }
+  return { format: "short-drama-studio", version: 1, title: projTitle(), idea: S.idea, genre: S.genre, secs: S.secs, aspect: S.aspect, nEps: S.nEps, tags: tagStr(), concept: S.concept, season: S.season, eps };
+}
+function importProject(text) {
+  let j; try { j = JSON.parse(text); } catch (e) { throw "这不是项目文件（JSON 读不出来）。"; }
+  if (!j || j.format !== "short-drama-studio" || typeof j.eps !== "object") throw "这不是短剧创作台的项目文件。";
+  const str = v => typeof v === "string" ? v : "";
+  S = blank(); AP.log = [];
+  Object.assign(S, { idea: str(j.idea), genre: str(j.genre) || S.genre, secs: Math.max(15, Math.min(900, +j.secs || 60)), aspect: j.aspect === "16:9" ? "16:9" : "9:16", nEps: Math.max(1, Math.min(100, +j.nEps || 1)), concept: str(j.concept), season: str(j.season) });
+  S.ok = { idea: !!S.idea.trim(), tags: true, concept: !!S.concept.trim(), season: !!S.season.trim() || S.nEps === 1 };
+  if (S.concept) markBase("concept"); if (S.season) markBase("season");
+  const list = Object.keys(j.eps).map(Number).filter(n => n >= 1 && n <= S.nEps).sort((a, b) => a - b);
+  list.forEach(n => { loadEp(n); const e = j.eps[n] || {}; EPK.forEach(k => { S[k] = str(e[k]); S.ok[k] = !!S[k].trim(); if (S[k]) markBase(k); }); });
+  loadEp(list[0] || 1);
+  const first = STEPS.findIndex(s => !S.ok[s.k]);
+  S.step = first < 0 ? STEPS.length - 1 : first; if (STEPS[S.step].k === "shots" && !S.shots && S.script) S.step = STEPS.findIndex(s => s.k === "script");
+  save(); render();
+}
+
+// ---------- export ----------
+async function saveFile(name, data) {
+  if (!data) { setStatus("这一步还没有内容。", "err"); return; }
+  if (!downloads) { setStatus("当前环境不能下载文件，可以全选文本框内容复制。", "err"); return; }
+  try { await downloads.save({ filename: name, data }); } catch (e) { setStatus("没有保存。"); }
+}
+function exportAll() {
+  const epParts = e => [["大纲", e.outline], ["剧本", e.script], ["分镜（CSV）", e.shots ? "```csv\n" + e.shots.trim() + "\n```" : ""]];
+  let parts = [["一句话", S.idea], ["概念", S.concept], ["整季大纲", S.season]];
+  if (S.nEps > 1) { for (let n = 1; n <= S.nEps; n++) { const e = epData(n); if (e && (e.outline || e.script || e.shots)) parts = parts.concat(epParts(e).map(([h, v]) => [`第 ${n} 集 · ${h}`, v])); } }
+  else parts = parts.concat(epParts(snapEp()));
+  parts = parts.filter(p => p[1]);
+  const title = (S.concept.match(/^#\s*(.+)/m) || [, "短剧项目"])[1].trim();
+  saveFile(`${title}-前期.md`, `# ${title}\n\n` + parts.map(([h, v]) => `## ${h}\n\n${v.trim().replace(/^(#{1,4})\s/gm, "##$1 ")}\n`).join("\n"));
+}
+
+// ---------- boot ----------
+render();
+(async () => {
+  const c = window.claude;
+  const [s, dl] = await Promise.all([c?.use ? c.use("sample") : null, c?.use ? c.use("downloads") : null].map(p => Promise.resolve(p).catch(() => null)));
+  sample = s; downloads = dl;
+  $("noSample").hidden = !!sample;
+  if (!sample) { const f = $("fix"); if (f) f.hidden = true; }
+})();
+</script>
