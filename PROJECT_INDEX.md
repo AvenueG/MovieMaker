@@ -16,7 +16,7 @@
 | 调用 agent 写一集 / 审片 | [RUNBOOK](docs/context/RUNBOOK.md)「用 agent 写一集」 | `.claude/agents/<名字>.md` |
 | 跑质量门 | [RUNBOOK](docs/context/RUNBOOK.md)「质量门」 | `check.py` 里对应的 `gates_*` 函数 |
 | 和网页创作台互导 | [RUNBOOK](docs/context/RUNBOOK.md)「和网页互通」 | `studio_sync.py` |
-| 用灵感输入台开一部新剧 | [MAP.md](docs/context/MAP.md)「目录」里的 input-desk | SKILL.md「阶段 0A」「切片模式」 |
+| 用灵感输入台开一部新剧、拿到项目卡后怎么接 | SKILL.md「模块交接」；[RUNBOOK](docs/context/RUNBOOK.md)「新开一部剧」 | [MAP.md](docs/context/MAP.md) 里的 input-desk；SKILL.md「切片模式」 |
 | 改网页创作台或检查器 | [MAP.md](docs/context/MAP.md)「网页工具」 | `studio/studio.html` 里相关函数（用搜索定位） |
 | 改质量门阈值 | [DECISIONS.md](docs/context/DECISIONS.md)「质量门」 | 三处同步，见 MAP |
 | 审片标准 | SKILL.md「审片打分」一节 | [review-rubrics.md](docs/research/review-rubrics.md)（广告片、电影节标准） |
