@@ -183,7 +183,7 @@ const EXAMPLE = {
 };
 const BLANK = () => ({ example: false, step: 0, deckIdx: 0, likes: [], skips: [], cast: { her: { name: "", look: "", vibe: "" }, him: { name: "", look: "", vibe: "" } }, world: "", rule: "", scene: { type: "", place: "", wish: "" }, draft: null, clips: [] });
 
-let S, sample = null, downloads = null, busy = false, justStamped = false;
+let S, sample = null, downloads = null, busy = false, justStamped = false, justEdited = null;
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const KEY = "input-desk-v3";
@@ -238,7 +238,8 @@ ${wish() ? `作者亲手写了这一句（台词或画面），必须作为单�
 ${FORMAT}`, { modelTier: "complex", cache: false });
   const beats = clean(r.beats); const w = wish(); const norm = t => t.replace(/[，。！？…、,.!?\s「」“”]/g, "");
   if (w) { const hit = beats.find(b => norm(b.t) === norm(w) || norm(b.t).includes(norm(w))); if (hit) { hit.t = hit.k === "line" && hit.t !== w && norm(hit.t) === norm(w) ? w : hit.t; hit.mine = true; } else beats.splice(Math.min(2, beats.length), 0, { k: "act", t: w, mine: true }); }
-  S.draft = { title: r.title || `${S.scene.type}`, type: S.scene.type, place: S.scene.place, flavors: [], beats };
+  const mode = S.draft ? { editing: S.draft.editing, from: S.draft.from } : {};
+  S.draft = { title: r.title || `${S.scene.type}`, type: S.scene.type, place: S.scene.place, flavors: [], beats, ...mode };
 }
 async function flavor(f) {
   if (!sample) throw { message: "连不上 Claude。" };
@@ -285,7 +286,7 @@ function render() {
   BIND[k]?.();
   const cur = document.querySelector('.rail [aria-current="step"]'); const r = $("rail");
   if (cur && r.scrollWidth > r.clientWidth) r.scrollLeft = cur.offsetLeft - (r.clientWidth - cur.offsetWidth) / 2;
-  justStamped = false;
+  justStamped = false; justEdited = null;
 }
 const pickBtns = (list, sel, attr) => {
   const vals = list.map(x => typeof x === "string" ? x : x.v); const extra = sel && !vals.includes(sel) ? [sel] : [];
@@ -328,21 +329,22 @@ const VIEWS = {
     <div class="group"><span>地点</span>${pickBtns(PLACES, S.scene.place, "data-place")}</div>
     <div class="group"><span>你脑子里已经有的一句台词或一个画面（可选，AI 会一字不改地用上）</span><input type="text" class="field" id="wish" value="${esc(S.scene.wish || "")}" placeholder="比如：三百年了，番茄是酸的" maxlength="40"></div>
     <div class="row"><button class="btn primary" type="button" id="draftBtn" ${sample && S.scene.type && S.scene.place ? "" : "disabled"}>${d ? "换一版" : "拼一条名场面"}</button>${!sample ? `<span class="meter">要连上 Claude 才能出名场面</span>` : ""}</div>
-    ${d ? `<div class="grid" style="display:grid;gap:12px"><h3>${esc(d.title)}</h3>
+    ${d ? `<div class="grid" style="display:grid;gap:12px">${d.editing != null ? `<div class="banner" style="margin:0">正在修改作品集里的 C${String(d.editing + 1).padStart(2, "0")}。改完点「保存修改」，原来那条会被替换。</div>` : d.from != null ? `<div class="banner" style="margin:0">以 C${String(d.from + 1).padStart(2, "0")} 为底做新的一条，原来那条不会变。</div>` : ""}
+      <h3 id="titleEd" role="button" tabindex="0" title="点一下改标题" style="cursor:text">${esc(d.title)} <span class="meter">✎</span></h3>
       <div class="script"><div class="slugline">内景 · ${esc(d.place)} · ${esc(S.world)}　｜　${esc(nameOf("her"))}、${esc(nameOf("him"))}</div>
       ${d.beats.map((b, i) => b.k === "line" ? `<div class="beat line ${b.mine ? "mine" : ""}" data-edit="${i}" role="button" tabindex="0" title="点一下自己改"><span class="no">${i + 1}</span><span><span class="who">${esc(b.who)}</span>（${esc(b.how || "")}）<span class="t">${esc(b.t)}</span>${b.tag ? `<span class="tag">#${esc(b.tag)}</span>` : ""}</span></div>` : `<div class="beat act ${b.mine ? "mine" : ""}" data-edit="${i}" role="button" tabindex="0" title="点一下自己改"><span class="no">${i + 1}</span><span><span class="t">${esc(b.t)}</span>${b.tag ? `<span class="tag">#${esc(b.tag)}</span>` : ""}</span></div>`).join("")}</div>
       <div class="gates">${gates(d.beats).map(g => `<span class="gate ${g.ok ? "" : "bad"}">${g.ok ? "✓" : "✗"} ${esc(g.t)}</span>`).join("")}</div>
       <div class="group"><span>调味${d.flavors.length ? `（已调：${esc(d.flavors.join("、"))}）` : ""}</span><div class="flavors">${FLAVORS.map(f => `<button type="button" class="pick" data-flavor="${f}" ${sample ? "" : "disabled"}>${f}</button>`).join("")}</div>
       <div class="row"><input type="text" class="field" id="flavorOwn" placeholder="或者直接说想怎么改，比如：让他先低头" maxlength="60" style="flex:1 1 220px;width:auto"><button class="btn" type="button" id="flavorGo" ${sample ? "" : "disabled"}>按我说的改</button></div></div>
-      <div class="row"><button class="btn primary" type="button" id="keepBtn">满意，收进作品集</button></div></div>` : ""}`;
+      <div class="row"><button class="btn primary" type="button" id="keepBtn">${d.editing != null ? "保存修改" : "满意，收进作品集"}</button>${d.editing != null || d.from != null ? `<button class="btn ghost" type="button" id="dropBtn">不改了</button>` : ""}</div></div>` : ""}`;
   },
   wall: () => {
     const used = new Set(S.clips.flatMap(c => [c.type])); const mine = S.clips.reduce((n, c) => n + (c.mine || 0), 0);
-    const last = S.clips[S.clips.length - 1];
+    const last = S.clips[S.clips.length - 1]; const ed = justEdited != null && S.clips[justEdited];
     return `<h2>你的作品集</h2>
-    ${last ? `<div class="cheer"><span class="stamp ${justStamped ? "new" : ""}">已<br>收录</span><p>${cheer(last)}</p></div>` : ""}
+    ${ed ? `<div class="cheer"><span class="stamp new">已<br>改好</span><p>${esc(`C${String(justEdited + 1).padStart(2, "0")}「${ed.title}」改好了。` + (ed.mine ? `现在有 ${ed.mine} 处是你亲手写的。` : ""))}</p></div>` : last ? `<div class="cheer"><span class="stamp ${justStamped ? "new" : ""}">已<br>收录</span><p>${cheer(last)}</p></div>` : ""}
     <div class="stats"><div><b>${S.clips.length}</b><span>条名场面</span></div><div><b>${used.size}</b><span>种名场面类型</span></div><div><b>${mine}</b><span>处你亲手写的</span></div></div>
-    ${S.clips.length ? `<div class="wall">${S.clips.map((c, i) => { const q = c.beats.find(b => b.mine) || c.beats.find(b => b.k === "line"); return `<div class="tile"><span class="stamp">C${String(i + 1).padStart(2, "0")}</span><h3>${esc(c.title)}</h3>${q ? `<span class="quote">「${esc(q.t)}」</span>` : ""}<span class="meta">${esc(c.type)} · ${esc(c.place)}${c.flavors?.length ? " · " + esc(c.flavors.join("、")) : ""}</span><div class="row"><button class="btn ghost" type="button" data-copy="${i}">复制剧本</button><button class="btn ghost" type="button" data-del="${i}">删除</button></div></div>`; }).join("")}</div>` : `<p class="why">还没有作品。去「出名场面」拼第一条吧。</p>`}
+    ${S.clips.length ? `<div class="wall">${S.clips.map((c, i) => { const q = c.beats.find(b => b.mine) || c.beats.find(b => b.k === "line"); return `<div class="tile"><span class="stamp">C${String(i + 1).padStart(2, "0")}</span><h3>${esc(c.title)}</h3>${q ? `<span class="quote">「${esc(q.t)}」</span>` : ""}<span class="meta">${esc(c.type)} · ${esc(c.place)}${c.flavors?.length ? " · " + esc(c.flavors.join("、")) : ""}</span><div class="row"><button class="btn" type="button" data-reopen="${i}">修改</button><button class="btn" type="button" data-fork="${i}">以它为底再做一条</button><button class="btn ghost" type="button" data-copy="${i}">复制剧本</button><button class="btn ghost" type="button" data-del="${i}">删除</button></div></div>`; }).join("")}</div>` : `<p class="why">还没有作品。去「出名场面」拼第一条吧。</p>`}
     <div class="row"><button class="btn primary" type="button" data-go="3">再来一条</button><button class="btn" type="button" id="exportBtn" ${S.clips.length ? "" : "disabled"}>导出项目卡</button></div>`;
   },
 };
@@ -376,6 +378,8 @@ const BIND = {
   scene() {
     document.querySelectorAll("[data-type]").forEach(b => b.addEventListener("click", () => { S.scene.type = b.dataset.type; touch(); render(); }));
     document.querySelectorAll("[data-place]").forEach(b => b.addEventListener("click", () => { S.scene.place = b.dataset.place; touch(); render(); }));
+    $("dropBtn")?.addEventListener("click", () => { S.draft = null; S.step = 4; touch(); render(); });
+    $("titleEd")?.addEventListener("click", editTitle); $("titleEd")?.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.id === "titleEd") editTitle(); });
     $("wish").addEventListener("input", e => { S.scene.wish = e.target.value; touch(); });
     $("draftBtn")?.addEventListener("click", e => run(e.target, draftScene));
     $("flavorGo")?.addEventListener("click", e => { const f = $("flavorOwn").value.trim(); if (f) run(e.target, () => flavor(f)); else $("flavorOwn").focus(); });
@@ -383,16 +387,28 @@ const BIND = {
     document.querySelectorAll("[data-flavor]").forEach(b => b.addEventListener("click", () => run(b, () => flavor(b.dataset.flavor))));
     document.querySelectorAll("[data-edit]").forEach(el => { const open = () => editLine(el); el.addEventListener("click", open); el.addEventListener("keydown", e => { if (e.key === "Enter") open(); }); });
     $("keepBtn")?.addEventListener("click", () => {
-      const d = S.draft; S.clips.push({ ...d, mine: d.beats.filter(b => b.mine).length, at: new Date().toISOString().slice(0, 10) });
-      S.draft = null; S.scene.wish = ""; S.step = 4; justStamped = true; touch(); render(); window.scrollTo({ top: 0 });
+      const { editing, from, ...d } = S.draft; const clip = { ...d, mine: d.beats.filter(b => b.mine).length, at: new Date().toISOString().slice(0, 10) };
+      if (editing != null && S.clips[editing]) { S.clips[editing] = clip; justEdited = editing; } else { S.clips.push(clip); justStamped = true; }
+      S.draft = null; S.scene.wish = ""; S.step = 4; touch(); render(); window.scrollTo({ top: 0 });
     });
   },
   wall() {
     $("exportBtn")?.addEventListener("click", exportCard);
+    const open = (i, mode) => { const c = structuredClone(S.clips[i]); delete c.mine; delete c.at; S.draft = { ...c, flavors: c.flavors || [], [mode]: i }; S.scene.type = c.type; S.scene.place = c.place; S.step = 3; touch(); render(); window.scrollTo({ top: 0 }); };
+    document.querySelectorAll("[data-reopen]").forEach(b => b.addEventListener("click", () => open(+b.dataset.reopen, "editing")));
+    document.querySelectorAll("[data-fork]").forEach(b => b.addEventListener("click", () => open(+b.dataset.fork, "from")));
     document.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => { if (b.dataset.armed) { S.clips.splice(+b.dataset.del, 1); touch(); render(); } else { b.dataset.armed = "1"; b.textContent = "再点一次删除"; } }));
     document.querySelectorAll("[data-copy]").forEach(b => b.addEventListener("click", async () => { const t = toScript(S.clips[+b.dataset.copy], +b.dataset.copy); try { await navigator.clipboard.writeText(t); setStatus("剧本已复制。"); } catch (e) { setStatus("复制不了，下面是全文。"); $("main").insertAdjacentHTML("beforeend", `<pre class="card-out">${esc(t)}</pre>`); } }));
   },
 };
+function editTitle() {
+  const h = $("titleEd"); if (!h || h.querySelector("input")) return;
+  const inp = document.createElement("input"); inp.type = "text"; inp.className = "field"; inp.value = S.draft.title; inp.maxLength = 30; inp.setAttribute("aria-label", "改标题");
+  h.replaceChildren(inp); inp.focus(); inp.select(); let fin = false;
+  const commit = ok => { if (fin) return; fin = true; const v = inp.value.trim(); if (ok && v) { S.draft.title = v; touch(); } render(); };
+  inp.addEventListener("keydown", e => { if (e.key === "Enter") commit(true); if (e.key === "Escape") commit(false); });
+  inp.addEventListener("blur", () => commit(true));
+}
 function editLine(el) {
   const i = +el.dataset.edit; const b = S.draft.beats[i]; if (el.querySelector("input")) return;
   const t = el.querySelector(".t"); const inp = document.createElement("input"); inp.type = "text"; inp.value = b.t; inp.id = "edit-" + i; inp.setAttribute("aria-label", "改这句台词");

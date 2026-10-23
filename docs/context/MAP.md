@@ -10,7 +10,7 @@
 | `.claude/skills/short-drama-preprod/` | `SKILL.md` 方法；`scripts/check.py` 质量门；`scripts/studio_sync.py` 网页互导 | skill 的唯一权威副本 |
 | `.claude/agents/` | `screenwriter.md` `reviewer.md` `storyboarder.md` | |
 | `studio/studio.html` | 网页短剧创作台源码 | 已发布：https://claude.ai/artifact/Q3VFc8tCdBaS6dRWpUYQgk |
-| `studio/input-desk.html` | 灵感输入台 v3：测口味（16 张卡点喜欢/跳过）→ 捏人 → 世界和规则 → 名场面（点选拼出 + 调味按钮或自己说怎么改 + 点任意一拍自己改；可先写一句台词或画面让 AI 原样用上）；每组选项都有「＋自己写」，人物可写口头禅或小怪癖→ 作品集（盖章、统计、导出项目卡） | 已发布：https://claude.ai/artifact/Ur2115ETGpu3yoPpXvB7mK（第 3 版）；切片质量门（12–35 秒、钩子、停在顶点、15 字/句）和 check.py 切片模式一致；作者改过的台词标记为亲手写，调味时保留原文 |
+| `studio/input-desk.html` | 灵感输入台 v3：测口味（16 张卡点喜欢/跳过）→ 捏人 → 世界和规则 → 名场面（点选拼出 + 调味按钮或自己说怎么改 + 点任意一拍自己改；可先写一句台词或画面让 AI 原样用上）；每组选项都有「＋自己写」，人物可写口头禅或小怪癖→ 作品集（盖章、统计、每条可「修改」或「以它为底再做一条」、导出项目卡） | 已发布：https://claude.ai/artifact/Ur2115ETGpu3yoPpXvB7mK（第 3 版）；切片质量门（12–35 秒、钩子、停在顶点、15 字/句）和 check.py 切片模式一致；作者改过的台词标记为亲手写，调味时保留原文 |
 | `studio/gate-checker.html` | 网页版质量门检查器 | 已发布：https://claude.ai/artifact/NPTzXxFaCFgMEB2z7NtxgN |
 | `docs/research/` | 开源方案调研、开源 skill 调研、前期工具调研、三套审片标准 | 只作参考 |
 | `samples/` | 早期样片包 | 见下 |
